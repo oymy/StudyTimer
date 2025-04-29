@@ -33,7 +33,7 @@ class StudyTimerService : Service() {
         
         // Default timer constants
         private const val DEFAULT_STUDY_TIME_MIN = 90 // 90 minutes
-        private const val DEFAULT_BREAK_TIME_MIN = 20 // 20 minutes
+        private const val DEFAULT_BREAK_TIME_MIN = 20 // Default break if not passed
         const val EYE_REST_TIME_MS = 10 * 1000L // 10 seconds - fixed
         const val DEFAULT_MIN_ALARM_INTERVAL_MIN = 3
         const val DEFAULT_MAX_ALARM_INTERVAL_MIN = 5
@@ -49,6 +49,7 @@ class StudyTimerService : Service() {
         const val EXTRA_MIN_ALARM_INTERVAL_MIN = "com.example.studytimer.extra.MIN_ALARM_INTERVAL_MIN"
         const val EXTRA_MAX_ALARM_INTERVAL_MIN = "com.example.studytimer.extra.MAX_ALARM_INTERVAL_MIN"
         const val EXTRA_SHOW_NEXT_ALARM_TIME = "com.example.studytimer.extra.SHOW_NEXT_ALARM_TIME"
+        const val EXTRA_BREAK_DURATION_MIN = "com.example.studytimer.extra.BREAK_DURATION_MIN"
     }
     
     // Timer state
@@ -80,17 +81,18 @@ class StudyTimerService : Service() {
     // Random for alarm intervals
     private val random = Random()
     
-    // Configurable timer durations (initialized with defaults)
-    private var studyDurationMin = DEFAULT_STUDY_TIME_MIN
-    private var minAlarmIntervalMin = DEFAULT_MIN_ALARM_INTERVAL_MIN
-    private var maxAlarmIntervalMin = DEFAULT_MAX_ALARM_INTERVAL_MIN
+    // Configurable durations (in minutes)
+    private var studyDurationMin: Int = DEFAULT_STUDY_TIME_MIN
+    private var breakDurationMin: Int = DEFAULT_BREAK_TIME_MIN
+    private var minAlarmIntervalMin: Int = DEFAULT_MIN_ALARM_INTERVAL_MIN
+    private var maxAlarmIntervalMin: Int = DEFAULT_MAX_ALARM_INTERVAL_MIN
     
     // Calculated time values in milliseconds
     private val studyTimeMs: Long
         get() = studyDurationMin * 60 * 1000L
     
     private val breakTimeMs: Long
-        get() = DEFAULT_BREAK_TIME_MIN * 60 * 1000L // Break time is fixed at 20 minutes
+        get() = breakDurationMin * 60 * 1000L
     
     private val minAlarmIntervalMs: Long
         get() = minAlarmIntervalMin * 60 * 1000L
@@ -127,8 +129,9 @@ class StudyTimerService : Service() {
                     studyDurationMin = it.getIntExtra(EXTRA_STUDY_DURATION_MIN, DEFAULT_STUDY_TIME_MIN)
                     minAlarmIntervalMin = it.getIntExtra(EXTRA_MIN_ALARM_INTERVAL_MIN, DEFAULT_MIN_ALARM_INTERVAL_MIN)
                     maxAlarmIntervalMin = it.getIntExtra(EXTRA_MAX_ALARM_INTERVAL_MIN, DEFAULT_MAX_ALARM_INTERVAL_MIN)
-                    showNextAlarmTimeInNotification = it.getBooleanExtra(EXTRA_SHOW_NEXT_ALARM_TIME, false) // Get the setting
-                    
+                    showNextAlarmTimeInNotification = it.getBooleanExtra(EXTRA_SHOW_NEXT_ALARM_TIME, false) 
+                    breakDurationMin = it.getIntExtra(EXTRA_BREAK_DURATION_MIN, calculateDefaultBreak(studyDurationMin)) // Read break duration
+
                     // Ensure min alarm interval is less than max
                     if (minAlarmIntervalMin >= maxAlarmIntervalMin) {
                         minAlarmIntervalMin = maxAlarmIntervalMin - 1
@@ -138,7 +141,7 @@ class StudyTimerService : Service() {
                         }
                     }
                     
-                    Log.d(TAG, "Starting with study duration: $studyDurationMin min, alarm interval: $minAlarmIntervalMin-$maxAlarmIntervalMin min, showNextAlarm: $showNextAlarmTimeInNotification")
+                    Log.d(TAG, "Starting with study duration: $studyDurationMin min, break: $breakDurationMin min, alarm interval: $minAlarmIntervalMin-$maxAlarmIntervalMin min, showNextAlarm: $showNextAlarmTimeInNotification")
                     
                     // Start foreground with initial notification (respecting the setting)
                     val initialNotificationText = getNotificationContentText()
@@ -290,17 +293,12 @@ class StudyTimerService : Service() {
     }
     
     private fun startBreak() {
-        alarmTimer?.cancel()
-        
+        Log.d(TAG, "Starting break for $breakDurationMin minutes")
         _timerState.value = TimerState.BREAK
-        _timeLeftInSession.value = breakTimeMs
-        updateNotification()
+        _timeLeftInSession.value = TimeUnit.MINUTES.toMillis(breakDurationMin.toLong()) // Use stored break duration
         
-        // Play break sound
-        playBreakSound()
-        
-        // Start break timer
-        sessionTimer = object : CountDownTimer(breakTimeMs, 1000) {
+        sessionTimer?.cancel()
+        sessionTimer = object : CountDownTimer(_timeLeftInSession.value, 1000) {
             override fun onTick(millisUntilFinished: Long) {
                 _timeLeftInSession.value = millisUntilFinished
                 updateNotification()
@@ -311,6 +309,7 @@ class StudyTimerService : Service() {
                 startStudySession()
             }
         }.start()
+        updateNotification()
     }
     
     private fun playAlarmSound() {
@@ -460,6 +459,11 @@ class StudyTimerService : Service() {
         }
     }
     
+    private fun calculateDefaultBreak(studyDuration: Int): Int {
+        val calculated = (studyDuration * (20.0 / 90.0)).roundToInt()
+        return maxOf(5, calculated)
+    }
+
     override fun onDestroy() {
         stopTimers()
         super.onDestroy()

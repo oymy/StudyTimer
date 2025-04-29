@@ -24,6 +24,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 class MainActivity : ComponentActivity() {
     private var studyTimerService: StudyTimerService? = null
@@ -142,6 +143,8 @@ class MainActivity : ComponentActivity() {
                     val currentStudyDuration = _studyDurationMin.collectAsState().value
                     val currentMinInterval = _minAlarmIntervalMin.collectAsState().value
                     val currentMaxInterval = _maxAlarmIntervalMin.collectAsState().value
+                    // Calculate break duration
+                    val currentBreakDuration = calculateBreakDuration(currentStudyDuration)
                     
                     StudyTimerApp(
                         timerState = timerState,
@@ -151,6 +154,7 @@ class MainActivity : ComponentActivity() {
                         studyDurationMin = currentStudyDuration, // Pass setting
                         minAlarmIntervalMin = currentMinInterval, // Pass setting
                         maxAlarmIntervalMin = currentMaxInterval, // Pass setting
+                        breakDurationMin = currentBreakDuration, // Pass calculated break duration
                         onStartClick = { startStudySession() },
                         onStopClick = { stopStudySession() },
                         onSettingsClick = { _showSettings.value = true } // Navigate to settings
@@ -224,25 +228,33 @@ class MainActivity : ComponentActivity() {
     val uiTimeUntilNextAlarm: StateFlow<Long> = _uiTimeUntilNextAlarm
     val showNextAlarmTime: StateFlow<Boolean> = _showNextAlarmTime
     
+    // Function to calculate break duration based on study duration
+    private fun calculateBreakDuration(studyDuration: Int): Int {
+        val calculated = (studyDuration * (20.0 / 90.0)).roundToInt()
+        return maxOf(5, calculated) // Ensure minimum 5 minutes break
+    }
+    
     private fun startStudySession() {
         val intent = Intent(this, StudyTimerService::class.java).apply {
             action = StudyTimerService.ACTION_START
-            putExtra(StudyTimerService.EXTRA_STUDY_DURATION_MIN, _studyDurationMin.value)
+            val studyDuration = _studyDurationMin.value
+            val breakDuration = calculateBreakDuration(studyDuration) // Calculate break duration
+            putExtra(StudyTimerService.EXTRA_STUDY_DURATION_MIN, studyDuration)
+            putExtra(StudyTimerService.EXTRA_BREAK_DURATION_MIN, breakDuration) // Pass break duration to service
             putExtra(StudyTimerService.EXTRA_MIN_ALARM_INTERVAL_MIN, _minAlarmIntervalMin.value)
             putExtra(StudyTimerService.EXTRA_MAX_ALARM_INTERVAL_MIN, _maxAlarmIntervalMin.value)
-            putExtra(StudyTimerService.EXTRA_SHOW_NEXT_ALARM_TIME, _showNextAlarmTime.value)
+            putExtra(StudyTimerService.EXTRA_SHOW_NEXT_ALARM_TIME, _showNextAlarmTime.value) 
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(intent)
+        } else {
+            startService(intent)
         }
         
         // Immediately update UI state
         _uiTimerState.value = StudyTimerService.TimerState.STUDYING
         _uiTimeLeftInSession.value = 90 * 60 * 1000L // Convert minutes to ms
         _uiTimeUntilNextAlarm.value = 3 * 60 * 1000L // Initial alarm time
-        
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(intent)
-        } else {
-            startService(intent)
-        }
     }
     
     private fun stopStudySession() {

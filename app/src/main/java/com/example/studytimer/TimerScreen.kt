@@ -33,6 +33,7 @@ fun StudyTimerApp(
     studyDurationMin: Int,
     minAlarmIntervalMin: Int,
     maxAlarmIntervalMin: Int,
+    breakDurationMin: Int,
     onStartClick: () -> Unit,
     onStopClick: () -> Unit,
     onSettingsClick: () -> Unit
@@ -68,8 +69,8 @@ fun StudyTimerApp(
                             // Calculate progress based on the current state and its duration
                             val totalDurationMs = when (timerState) {
                                 StudyTimerService.TimerState.STUDYING -> studyDurationMin * 60 * 1000L
-                                StudyTimerService.TimerState.BREAK -> 20 * 60 * 1000L // Use constant break time
-                                StudyTimerService.TimerState.EYE_REST -> StudyTimerService.EYE_REST_TIME_MS // Use service constant
+                                StudyTimerService.TimerState.BREAK -> breakDurationMin * 60 * 1000L
+                                StudyTimerService.TimerState.EYE_REST -> StudyTimerService.EYE_REST_TIME_MS
                                 StudyTimerService.TimerState.IDLE -> 1L // Avoid division by zero, progress is 1f anyway
                             }
                             if (totalDurationMs > 0 && (timerState != StudyTimerService.TimerState.IDLE && timerState != StudyTimerService.TimerState.EYE_REST)) {
@@ -128,7 +129,7 @@ fun StudyTimerApp(
                         StudyTimerService.TimerState.EYE_REST ->
                             "Close your eyes and relax for 10 seconds."
                         StudyTimerService.TimerState.IDLE ->
-                            "${studyDurationMin}min study + 20min break cycles with eye rest alarms every ${minAlarmIntervalMin}-${maxAlarmIntervalMin}min."
+                            "${studyDurationMin}min study + ${breakDurationMin}min break cycles with eye rest alarms every ${minAlarmIntervalMin}-${maxAlarmIntervalMin}min."
                     },
                     fontSize = 14.sp,
                     textAlign = TextAlign.Center,
@@ -246,6 +247,7 @@ fun TimerScreenPreviewIdle() {
             studyDurationMin = 90,
             minAlarmIntervalMin = 3,
             maxAlarmIntervalMin = 5,
+            breakDurationMin = 20,
             onStartClick = {}, 
             onStopClick = {}, 
             onSettingsClick = {}
@@ -262,9 +264,10 @@ fun TimerScreenPreviewStudying() {
             timeLeftInSession = 45 * 60 * 1000L, 
             timeUntilNextAlarm = 2 * 60 * 1000L,
             showNextAlarmTime = true,
-            studyDurationMin = 60,
-            minAlarmIntervalMin = 4,
-            maxAlarmIntervalMin = 6,
+            studyDurationMin = 60, 
+            minAlarmIntervalMin = 4, 
+            maxAlarmIntervalMin = 6, 
+            breakDurationMin = 13, 
             onStartClick = {}, 
             onStopClick = {}, 
             onSettingsClick = {}
@@ -281,9 +284,10 @@ fun TimerScreenPreviewBreak() {
             timeLeftInSession = 15 * 60 * 1000L,
             timeUntilNextAlarm = 0L,
             showNextAlarmTime = true,
-            studyDurationMin = 90,
-            minAlarmIntervalMin = 3,
-            maxAlarmIntervalMin = 5,
+            studyDurationMin = 90, 
+            minAlarmIntervalMin = 3, 
+            maxAlarmIntervalMin = 5, 
+            breakDurationMin = 20, 
             onStartClick = {}, 
             onStopClick = {}, 
             onSettingsClick = {}
@@ -300,9 +304,10 @@ fun TimerScreenPreviewEyeRest() {
             timeLeftInSession = 5 * 1000L, // Show remaining eye rest time
             timeUntilNextAlarm = 0L,
             showNextAlarmTime = true,
-            studyDurationMin = 90,
-            minAlarmIntervalMin = 3,
-            maxAlarmIntervalMin = 5,
+            studyDurationMin = 90, 
+            minAlarmIntervalMin = 3, 
+            maxAlarmIntervalMin = 5, 
+            breakDurationMin = 20, 
             onStartClick = {}, 
             onStopClick = {}, 
             onSettingsClick = {}
