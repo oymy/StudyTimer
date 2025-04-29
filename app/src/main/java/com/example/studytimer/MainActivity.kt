@@ -299,7 +299,7 @@ fun StudyTimerApp(
                     .fillMaxSize()
                     .padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                verticalArrangement = Arrangement.Top
             ) {
                 // App title
                 Text(
@@ -335,35 +335,69 @@ fun StudyTimerApp(
                 }
                 
                 // Control buttons
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFFE8F5E9)
+                    )
                 ) {
-                    Button(
-                        onClick = onStartClick,
-                        enabled = timerState == StudyTimerService.TimerState.IDLE,
-                        modifier = Modifier.size(width = 120.dp, height = 48.dp)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.PlayArrow,
-                                contentDescription = "Start"
+                        Button(
+                            onClick = onStartClick,
+                            enabled = timerState == StudyTimerService.TimerState.IDLE,
+                            modifier = Modifier.size(width = 140.dp, height = 56.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                disabledContainerColor = Color.Gray
                             )
-                            Text(text = "Start", modifier = Modifier.padding(start = 8.dp))
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.PlayArrow,
+                                    contentDescription = "Start",
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Text(
+                                    text = "Start", 
+                                    modifier = Modifier.padding(start = 8.dp),
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
-                    }
-                    
-                    Button(
-                        onClick = onStopClick,
-                        enabled = timerState != StudyTimerService.TimerState.IDLE,
-                        modifier = Modifier.size(width = 120.dp, height = 48.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Stop"
+                        
+                        Button(
+                            onClick = onStopClick,
+                            enabled = timerState != StudyTimerService.TimerState.IDLE,
+                            modifier = Modifier.size(width = 140.dp, height = 56.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFE57373),
+                                disabledContainerColor = Color.Gray
                             )
-                            Text(text = "Stop", modifier = Modifier.padding(start = 8.dp))
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Stop",
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Text(
+                                    text = "Stop", 
+                                    modifier = Modifier.padding(start = 8.dp),
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
                 }
