@@ -18,6 +18,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.concurrent.TimeUnit
+import com.example.studytimer.StudyTimerService
+import com.example.studytimer.ui.theme.StudyTimerTheme
 
 /**
  * The main UI composable for the Timer screen.
@@ -27,6 +29,7 @@ fun StudyTimerApp(
     timerState: StudyTimerService.TimerState,
     timeLeftInSession: Long,
     timeUntilNextAlarm: Long,
+    showNextAlarmTime: Boolean,
     onStartClick: () -> Unit,
     onStopClick: () -> Unit,
     onSettingsClick: () -> Unit
@@ -75,7 +78,8 @@ fun StudyTimerApp(
                             fontWeight = FontWeight.Bold
                         )
                         
-                        if (timerState == StudyTimerService.TimerState.STUDYING) {
+                        // Conditionally show the next alarm time row
+                        if (timerState == StudyTimerService.TimerState.STUDYING && showNextAlarmTime) {
                             Spacer(modifier = Modifier.height(8.dp))
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -212,5 +216,69 @@ fun formatTime(millis: Long): String {
         String.format("%02d:%02d:%02d", hours, minutes, seconds)
     } else {
         String.format("%02d:%02d", minutes, seconds)
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun TimerScreenPreviewIdle() {
+    StudyTimerTheme {
+        StudyTimerApp(
+            timerState = StudyTimerService.TimerState.IDLE,
+            timeLeftInSession = 90 * 60 * 1000L,
+            timeUntilNextAlarm = 0L,
+            showNextAlarmTime = true,
+            onStartClick = {}, 
+            onStopClick = {}, 
+            onSettingsClick = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun TimerScreenPreviewStudying() {
+    StudyTimerTheme {
+        StudyTimerApp(
+            timerState = StudyTimerService.TimerState.STUDYING,
+            timeLeftInSession = 45 * 60 * 1000L, 
+            timeUntilNextAlarm = 2 * 60 * 1000L,
+            showNextAlarmTime = true,
+            onStartClick = {}, 
+            onStopClick = {}, 
+            onSettingsClick = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun TimerScreenPreviewBreak() {
+    StudyTimerTheme {
+        StudyTimerApp(
+            timerState = StudyTimerService.TimerState.BREAK,
+            timeLeftInSession = 15 * 60 * 1000L,
+            timeUntilNextAlarm = 0L,
+            showNextAlarmTime = true,
+            onStartClick = {}, 
+            onStopClick = {}, 
+            onSettingsClick = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun TimerScreenPreviewEyeRest() {
+    StudyTimerTheme {
+        StudyTimerApp(
+            timerState = StudyTimerService.TimerState.EYE_REST,
+            timeLeftInSession = 5 * 1000L, // Show remaining eye rest time
+            timeUntilNextAlarm = 0L,
+            showNextAlarmTime = true,
+            onStartClick = {}, 
+            onStopClick = {}, 
+            onSettingsClick = {}
+        )
     }
 }

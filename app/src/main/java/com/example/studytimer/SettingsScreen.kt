@@ -18,6 +18,8 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -28,9 +30,11 @@ fun SettingsScreen(
     studyDurationFlow: StateFlow<Int>,
     minAlarmIntervalFlow: StateFlow<Int>,
     maxAlarmIntervalFlow: StateFlow<Int>,
+    showNextAlarmTimeFlow: StateFlow<Boolean>,
     onStudyDurationChange: (Int) -> Unit,
     onMinAlarmIntervalChange: (Int) -> Unit,
     onMaxAlarmIntervalChange: (Int) -> Unit,
+    onShowNextAlarmTimeChange: (Boolean) -> Unit,
     onNavigateBack: () -> Unit
 ) {
     Scaffold(
@@ -55,9 +59,11 @@ fun SettingsScreen(
                 studyDurationFlow = studyDurationFlow,
                 minAlarmIntervalFlow = minAlarmIntervalFlow,
                 maxAlarmIntervalFlow = maxAlarmIntervalFlow,
+                showNextAlarmTimeFlow = showNextAlarmTimeFlow,
                 onStudyDurationChange = onStudyDurationChange,
                 onMinAlarmIntervalChange = onMinAlarmIntervalChange,
-                onMaxAlarmIntervalChange = onMaxAlarmIntervalChange
+                onMaxAlarmIntervalChange = onMaxAlarmIntervalChange,
+                onShowNextAlarmTimeChange = onShowNextAlarmTimeChange
             )
         }
     }
@@ -68,14 +74,17 @@ fun SettingsCard(
     studyDurationFlow: StateFlow<Int>,
     minAlarmIntervalFlow: StateFlow<Int>,
     maxAlarmIntervalFlow: StateFlow<Int>,
+    showNextAlarmTimeFlow: StateFlow<Boolean>,
     onStudyDurationChange: (Int) -> Unit,
     onMinAlarmIntervalChange: (Int) -> Unit,
-    onMaxAlarmIntervalChange: (Int) -> Unit
+    onMaxAlarmIntervalChange: (Int) -> Unit,
+    onShowNextAlarmTimeChange: (Boolean) -> Unit
 ) {
     // Observe the flows to get the current state values
     val studyDurationMin by studyDurationFlow.collectAsState()
     val minAlarmIntervalMin by minAlarmIntervalFlow.collectAsState()
     val maxAlarmIntervalMin by maxAlarmIntervalFlow.collectAsState()
+    val showNextAlarmTime by showNextAlarmTimeFlow.collectAsState()
 
     Card(
         modifier = Modifier
@@ -139,6 +148,32 @@ fun SettingsCard(
                 formatOption = { "$it min" },
                 onOptionSelected = onMaxAlarmIntervalChange
             )
+            
+            Divider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
+
+            // Row for the Switch setting
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp), // Add some padding
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween // Pushes label and switch apart
+            ) {
+                Text(
+                    text = "Show Next Alarm Time",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Switch(
+                    checked = showNextAlarmTime,
+                    onCheckedChange = onShowNextAlarmTimeChange,
+                    colors = SwitchDefaults.colors( // Optional: customize colors
+                        checkedThumbColor = MaterialTheme.colorScheme.primary,
+                        checkedTrackColor = MaterialTheme.colorScheme.primaryContainer,
+                        uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                        uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
+                    )
+                )
+            }
         }
     }
 }
@@ -203,14 +238,15 @@ fun <T> SettingItem(
 @Composable
 fun SettingsScreenPreview() {
     StudyTimerTheme {
-        // Use MutableStateFlow for preview purposes
         SettingsScreen(
             studyDurationFlow = remember { MutableStateFlow(90) },
             minAlarmIntervalFlow = remember { MutableStateFlow(3) },
             maxAlarmIntervalFlow = remember { MutableStateFlow(5) },
+            showNextAlarmTimeFlow = remember { MutableStateFlow(true) },
             onStudyDurationChange = {},
             onMinAlarmIntervalChange = {},
             onMaxAlarmIntervalChange = {},
+            onShowNextAlarmTimeChange = {},
             onNavigateBack = {}
         )
     }

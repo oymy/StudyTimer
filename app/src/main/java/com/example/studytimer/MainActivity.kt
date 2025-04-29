@@ -76,6 +76,13 @@ class MainActivity : ComponentActivity() {
             }
         }
         
+        // Load settings from SharedPreferences
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        _studyDurationMin.value = prefs.getInt(KEY_STUDY_DURATION, 90)
+        _minAlarmIntervalMin.value = prefs.getInt(KEY_MIN_ALARM, 3)
+        _maxAlarmIntervalMin.value = prefs.getInt(KEY_MAX_ALARM, 5)
+        _showNextAlarmTime.value = prefs.getBoolean(KEY_SHOW_NEXT_ALARM, true)
+        
         setContent {
             StudyTimerTheme {
                 val showSettings by _showSettings.collectAsState()
@@ -86,6 +93,7 @@ class MainActivity : ComponentActivity() {
                         studyDurationFlow = _studyDurationMin,
                         minAlarmIntervalFlow = _minAlarmIntervalMin,
                         maxAlarmIntervalFlow = _maxAlarmIntervalMin,
+                        showNextAlarmTimeFlow = _showNextAlarmTime,
                         onStudyDurationChange = { newDuration ->
                             // Validate: Study duration >= min/max intervals
                             val minInterval = _minAlarmIntervalMin.value
@@ -110,6 +118,9 @@ class MainActivity : ComponentActivity() {
                                 _maxAlarmIntervalMin.value = newMaxInterval
                             }
                         },
+                        onShowNextAlarmTimeChange = { show ->
+                            _showNextAlarmTime.value = show
+                        },
                         onNavigateBack = { _showSettings.value = false }
                     )
                 } else {
@@ -126,11 +137,13 @@ class MainActivity : ComponentActivity() {
                     val timerState = serviceTimerState?.value ?: uiTimerStateState.value
                     val timeLeftInSession = serviceTimeLeftInSession?.value ?: uiTimeLeftInSessionState.value
                     val timeUntilNextAlarm = serviceTimeUntilNextAlarm?.value ?: uiTimeUntilNextAlarmState.value
+                    val showNextAlarm = showNextAlarmTime.collectAsState().value // Collect the setting state
                     
                     StudyTimerApp(
                         timerState = timerState,
                         timeLeftInSession = timeLeftInSession,
                         timeUntilNextAlarm = timeUntilNextAlarm,
+                        showNextAlarmTime = showNextAlarm, // Pass the boolean value
                         onStartClick = { startStudySession() },
                         onStopClick = { stopStudySession() },
                         onSettingsClick = { _showSettings.value = true } // Navigate to settings
@@ -194,6 +207,7 @@ class MainActivity : ComponentActivity() {
     private val _studyDurationMin = MutableStateFlow(90) // Default 90 minutes
     private val _minAlarmIntervalMin = MutableStateFlow(3) // Default 3 minutes
     private val _maxAlarmIntervalMin = MutableStateFlow(5) // Default 5 minutes
+    private val _showNextAlarmTime = MutableStateFlow(true)
     
     // Navigation state flow
     private val _showSettings = MutableStateFlow(false)
@@ -201,6 +215,7 @@ class MainActivity : ComponentActivity() {
     val uiTimerState: StateFlow<StudyTimerService.TimerState> = _uiTimerState
     val uiTimeLeftInSession: StateFlow<Long> = _uiTimeLeftInSession
     val uiTimeUntilNextAlarm: StateFlow<Long> = _uiTimeUntilNextAlarm
+    val showNextAlarmTime: StateFlow<Boolean> = _showNextAlarmTime
     
     private fun startStudySession() {
         val intent = Intent(this, StudyTimerService::class.java).apply {
@@ -208,6 +223,7 @@ class MainActivity : ComponentActivity() {
             putExtra(StudyTimerService.EXTRA_STUDY_DURATION_MIN, _studyDurationMin.value)
             putExtra(StudyTimerService.EXTRA_MIN_ALARM_INTERVAL_MIN, _minAlarmIntervalMin.value)
             putExtra(StudyTimerService.EXTRA_MAX_ALARM_INTERVAL_MIN, _maxAlarmIntervalMin.value)
+            putExtra(StudyTimerService.EXTRA_SHOW_NEXT_ALARM_TIME, _showNextAlarmTime.value)
         }
         
         // Immediately update UI state
@@ -244,6 +260,15 @@ class MainActivity : ComponentActivity() {
     
     override fun onStop() {
         super.onStop()
+        // Persist settings just in case they were changed but not saved via the settings screen lambdas ( belt-and-suspenders)
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit() 
+            .putInt(KEY_STUDY_DURATION, _studyDurationMin.value)
+            .putInt(KEY_MIN_ALARM, _minAlarmIntervalMin.value)
+            .putInt(KEY_MAX_ALARM, _maxAlarmIntervalMin.value)
+            .putBoolean(KEY_SHOW_NEXT_ALARM, _showNextAlarmTime.value)
+            .apply()
+        
         // Unbind from the service
         if (bound) {
             unbindService(connection)
@@ -253,5 +278,10 @@ class MainActivity : ComponentActivity() {
     
     companion object {
         private const val TAG = "MainActivity"
+        private const val PREFS_NAME = "StudyTimerPrefs"
+        private const val KEY_STUDY_DURATION = "studyDuration"
+        private const val KEY_MIN_ALARM = "minAlarmInterval"
+        private const val KEY_MAX_ALARM = "maxAlarmInterval"
+        private const val KEY_SHOW_NEXT_ALARM = "showNextAlarmTime"
     }
 }

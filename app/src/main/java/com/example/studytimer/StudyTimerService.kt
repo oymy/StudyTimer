@@ -49,6 +49,7 @@ class StudyTimerService : Service() {
         const val EXTRA_STUDY_DURATION_MIN = "com.example.studytimer.extra.STUDY_DURATION_MIN"
         const val EXTRA_MIN_ALARM_INTERVAL_MIN = "com.example.studytimer.extra.MIN_ALARM_INTERVAL_MIN"
         const val EXTRA_MAX_ALARM_INTERVAL_MIN = "com.example.studytimer.extra.MAX_ALARM_INTERVAL_MIN"
+        const val EXTRA_SHOW_NEXT_ALARM_TIME = "com.example.studytimer.extra.SHOW_NEXT_ALARM_TIME"
     }
     
     // Timer state
@@ -98,6 +99,8 @@ class StudyTimerService : Service() {
     private val maxAlarmIntervalMs: Long
         get() = maxAlarmIntervalMin * 60 * 1000L
     
+    private var showNextAlarmTimeInNotification: Boolean = true // Default value
+    
     inner class LocalBinder : Binder() {
         fun getService(): StudyTimerService = this@StudyTimerService
     }
@@ -125,6 +128,7 @@ class StudyTimerService : Service() {
                     studyDurationMin = it.getIntExtra(EXTRA_STUDY_DURATION_MIN, DEFAULT_STUDY_TIME_MIN)
                     minAlarmIntervalMin = it.getIntExtra(EXTRA_MIN_ALARM_INTERVAL_MIN, DEFAULT_MIN_ALARM_INTERVAL_MIN)
                     maxAlarmIntervalMin = it.getIntExtra(EXTRA_MAX_ALARM_INTERVAL_MIN, DEFAULT_MAX_ALARM_INTERVAL_MIN)
+                    showNextAlarmTimeInNotification = it.getBooleanExtra(EXTRA_SHOW_NEXT_ALARM_TIME, true) // Get the setting
                     
                     // Ensure min alarm interval is less than max
                     if (minAlarmIntervalMin >= maxAlarmIntervalMin) {
@@ -135,9 +139,11 @@ class StudyTimerService : Service() {
                         }
                     }
                     
-                    Log.d(TAG, "Starting with study duration: $studyDurationMin min, alarm interval: $minAlarmIntervalMin-$maxAlarmIntervalMin min")
+                    Log.d(TAG, "Starting with study duration: $studyDurationMin min, alarm interval: $minAlarmIntervalMin-$maxAlarmIntervalMin min, showNextAlarm: $showNextAlarmTimeInNotification")
                     
-                    startForeground(NOTIFICATION_ID, createNotification("Study Timer Running"))
+                    // Start foreground with initial notification (respecting the setting)
+                    val initialNotificationText = getNotificationContentText()
+                    startForeground(NOTIFICATION_ID, createNotification(initialNotificationText))
                     startStudySession()
                 }
                 ACTION_STOP -> {
@@ -401,20 +407,27 @@ class StudyTimerService : Service() {
     }
     
     private fun updateNotification(customMessage: String? = null) {
-        val contentText = customMessage ?: when (_timerState.value) {
-            TimerState.STUDYING -> {
-                val timeString = formatTime(_timeLeftInSession.value)
-                val nextAlarmTime = formatTime(_timeUntilNextAlarm.value)
-                "Studying: $timeString | Next alarm: $nextAlarmTime"
-            }
-            TimerState.EYE_REST -> "Rest your eyes for 10 seconds"
-            TimerState.BREAK -> "Taking a break: ${formatTime(_timeLeftInSession.value)}"
-            TimerState.IDLE -> "Study Timer"
-        }
-        
+        val contentText = customMessage ?: getNotificationContentText()
         val notification = createNotification(contentText)
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(NOTIFICATION_ID, notification)
+    }
+    
+    private fun getNotificationContentText(): String {
+        return when (_timerState.value) {
+            TimerState.STUDYING -> {
+                val sessionTime = formatTime(_timeLeftInSession.value)
+                if (showNextAlarmTimeInNotification) {
+                    val alarmTime = formatTime(_timeUntilNextAlarm.value)
+                    "Studying: $sessionTime | Next alarm in: $alarmTime"
+                } else {
+                    "Studying: $sessionTime"
+                }
+            }
+            TimerState.BREAK -> "Break Time: ${formatTime(_timeLeftInSession.value)}"
+            TimerState.EYE_REST -> "Eye Rest: ${formatTime(EYE_REST_TIME_MS - (_timeUntilNextAlarm.value))}" // Assuming eye rest uses alarm timer temporarily
+            TimerState.IDLE -> "Timer Idle"
+        }
     }
     
     private fun formatTime(millis: Long): String {
