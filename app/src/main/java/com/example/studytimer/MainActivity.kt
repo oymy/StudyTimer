@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -56,6 +57,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.example.studytimer.ui.theme.StudyTimerTheme
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -114,14 +116,24 @@ class MainActivity : ComponentActivity() {
         
         setContent {
             StudyTimerTheme {
-                val timerState = studyTimerService?.timerState?.collectAsState()
-                val timeLeftInSession = studyTimerService?.timeLeftInSession?.collectAsState()
-                val timeUntilNextAlarm = studyTimerService?.timeUntilNextAlarm?.collectAsState()
+                // Collect state from service if bound, otherwise use local UI state
+                val serviceTimerState = studyTimerService?.timerState?.collectAsState()
+                val serviceTimeLeftInSession = studyTimerService?.timeLeftInSession?.collectAsState()
+                val serviceTimeUntilNextAlarm = studyTimerService?.timeUntilNextAlarm?.collectAsState()
+                
+                val uiTimerStateState = uiTimerState.collectAsState()
+                val uiTimeLeftInSessionState = uiTimeLeftInSession.collectAsState()
+                val uiTimeUntilNextAlarmState = uiTimeUntilNextAlarm.collectAsState()
+                
+                // Use service state if available, otherwise use UI state
+                val timerState = serviceTimerState?.value ?: uiTimerStateState.value
+                val timeLeftInSession = serviceTimeLeftInSession?.value ?: uiTimeLeftInSessionState.value
+                val timeUntilNextAlarm = serviceTimeUntilNextAlarm?.value ?: uiTimeUntilNextAlarmState.value
                 
                 StudyTimerApp(
-                    timerState = timerState?.value ?: StudyTimerService.TimerState.IDLE,
-                    timeLeftInSession = timeLeftInSession?.value ?: 0L,
-                    timeUntilNextAlarm = timeUntilNextAlarm?.value ?: 0L,
+                    timerState = timerState,
+                    timeLeftInSession = timeLeftInSession,
+                    timeUntilNextAlarm = timeUntilNextAlarm,
                     onStartClick = { startStudySession() },
                     onStopClick = { stopStudySession() }
                 )
@@ -129,14 +141,69 @@ class MainActivity : ComponentActivity() {
         }
     }
     
+    // Coroutine job references to cancel previous collectors
+    private var timerStateJob: Job? = null
+    private var timeLeftJob: Job? = null
+    private var alarmTimeJob: Job? = null
+    
     private fun updateUIFromService() {
-        // This function can be used to update any additional UI state from the service
+        // Cancel any existing collectors
+        timerStateJob?.cancel()
+        timeLeftJob?.cancel()
+        alarmTimeJob?.cancel()
+        
+        // Update local UI state from service when connected
+        studyTimerService?.let { service ->
+            // Collect timer state
+            timerStateJob = lifecycleScope.launch {
+                service.timerState.collect { state ->
+                    _uiTimerState.value = state
+                    
+                    // If we just entered eye rest state, show a toast notification
+                    if (state == StudyTimerService.TimerState.EYE_REST) {
+                        Toast.makeText(
+                            this@MainActivity,
+                            "Rest your eyes for 10 seconds",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            }
+            
+            // Collect time left in session
+            timeLeftJob = lifecycleScope.launch {
+                service.timeLeftInSession.collect { time ->
+                    _uiTimeLeftInSession.value = time
+                }
+            }
+            
+            // Collect time until next alarm
+            alarmTimeJob = lifecycleScope.launch {
+                service.timeUntilNextAlarm.collect { time ->
+                    _uiTimeUntilNextAlarm.value = time
+                }
+            }
+        }
     }
+    
+    // State flows to maintain UI state when service is not bound
+    private val _uiTimerState = MutableStateFlow(StudyTimerService.TimerState.IDLE)
+    private val _uiTimeLeftInSession = MutableStateFlow(0L)
+    private val _uiTimeUntilNextAlarm = MutableStateFlow(0L)
+    
+    val uiTimerState: StateFlow<StudyTimerService.TimerState> = _uiTimerState
+    val uiTimeLeftInSession: StateFlow<Long> = _uiTimeLeftInSession
+    val uiTimeUntilNextAlarm: StateFlow<Long> = _uiTimeUntilNextAlarm
     
     private fun startStudySession() {
         val intent = Intent(this, StudyTimerService::class.java).apply {
             action = StudyTimerService.ACTION_START
         }
+        
+        // Immediately update UI state
+        _uiTimerState.value = StudyTimerService.TimerState.STUDYING
+        _uiTimeLeftInSession.value = 90 * 60 * 1000L // 90 minutes
+        _uiTimeUntilNextAlarm.value = 3 * 60 * 1000L // Initial 3 minutes
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(intent)
@@ -150,6 +217,11 @@ class MainActivity : ComponentActivity() {
             action = StudyTimerService.ACTION_STOP
         }
         startService(intent)
+        
+        // Immediately update UI state
+        _uiTimerState.value = StudyTimerService.TimerState.IDLE
+        _uiTimeLeftInSession.value = 0L
+        _uiTimeUntilNextAlarm.value = 0L
     }
     
     override fun onStart() {

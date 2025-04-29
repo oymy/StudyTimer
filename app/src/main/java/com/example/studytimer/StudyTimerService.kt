@@ -199,8 +199,8 @@ class StudyTimerService : Service() {
         // Play alarm sound
         playAlarmSound()
         
-        // Vibrate device
-        vibrate()
+        // Vibrate device with a pattern for eye rest notification
+        vibrate(pattern = longArrayOf(0, 300, 200, 300, 200, 300))
         
         // Start eye rest timer
         startEyeRest()
@@ -211,15 +211,18 @@ class StudyTimerService : Service() {
         sessionTimer?.cancel()
         
         _timerState.value = TimerState.EYE_REST
-        updateNotification()
+        updateNotification("Rest your eyes for 10 seconds")
         
         // Start eye rest timer
         eyeRestTimer = object : CountDownTimer(EYE_REST_TIME_MS, 1000) {
             override fun onTick(millisUntilFinished: Long) {
-                updateNotification()
+                updateNotification("Rest your eyes: ${formatTime(millisUntilFinished)}")
             }
             
             override fun onFinish() {
+                // Play a gentle sound to indicate eye rest is complete
+                playEyeRestCompleteSound()
+                
                 // Resume study session
                 resumeStudySession()
             }
@@ -309,25 +312,60 @@ class StudyTimerService : Service() {
         }
     }
     
-    private fun vibrate() {
+    private fun playEyeRestCompleteSound() {
+        try {
+            // Use a gentler sound for eye rest completion
+            val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+            val mediaPlayer = MediaPlayer().apply {
+                setDataSource(this@StudyTimerService, soundUri)
+                setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build()
+                )
+                setOnCompletionListener { it.release() }
+                prepare()
+                start()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error playing eye rest complete sound", e)
+        }
+    }
+    
+    private fun vibrate(duration: Long = 500, pattern: LongArray? = null) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val vibratorManager = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
             val vibrator = vibratorManager.defaultVibrator
-            vibrator.vibrate(VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE))
+            
+            if (pattern != null) {
+                vibrator.vibrate(VibrationEffect.createWaveform(pattern, -1))
+            } else {
+                vibrator.vibrate(VibrationEffect.createOneShot(duration, VibrationEffect.DEFAULT_AMPLITUDE))
+            }
         } else {
             @Suppress("DEPRECATION")
             val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+            
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                vibrator.vibrate(VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE))
+                if (pattern != null) {
+                    vibrator.vibrate(VibrationEffect.createWaveform(pattern, -1))
+                } else {
+                    vibrator.vibrate(VibrationEffect.createOneShot(duration, VibrationEffect.DEFAULT_AMPLITUDE))
+                }
             } else {
                 @Suppress("DEPRECATION")
-                vibrator.vibrate(500)
+                if (pattern != null) {
+                    vibrator.vibrate(pattern, -1)
+                } else {
+                    vibrator.vibrate(duration)
+                }
             }
         }
     }
     
-    private fun updateNotification() {
-        val contentText = when (_timerState.value) {
+    private fun updateNotification(customMessage: String? = null) {
+        val contentText = customMessage ?: when (_timerState.value) {
             TimerState.STUDYING -> {
                 val timeString = formatTime(_timeLeftInSession.value)
                 val nextAlarmTime = formatTime(_timeUntilNextAlarm.value)
