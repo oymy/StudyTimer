@@ -18,6 +18,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,15 +26,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -125,6 +130,11 @@ class MainActivity : ComponentActivity() {
                 val uiTimeLeftInSessionState = uiTimeLeftInSession.collectAsState()
                 val uiTimeUntilNextAlarmState = uiTimeUntilNextAlarm.collectAsState()
                 
+                // Settings state
+                val studyDurationState = studyDurationMin.collectAsState()
+                val minAlarmIntervalState = minAlarmIntervalMin.collectAsState()
+                val maxAlarmIntervalState = maxAlarmIntervalMin.collectAsState()
+                
                 // Use service state if available, otherwise use UI state
                 val timerState = serviceTimerState?.value ?: uiTimerStateState.value
                 val timeLeftInSession = serviceTimeLeftInSession?.value ?: uiTimeLeftInSessionState.value
@@ -134,6 +144,12 @@ class MainActivity : ComponentActivity() {
                     timerState = timerState,
                     timeLeftInSession = timeLeftInSession,
                     timeUntilNextAlarm = timeUntilNextAlarm,
+                    studyDurationMin = studyDurationState.value,
+                    minAlarmIntervalMin = minAlarmIntervalState.value,
+                    maxAlarmIntervalMin = maxAlarmIntervalState.value,
+                    onStudyDurationChange = { _studyDurationMin.value = it },
+                    onMinAlarmIntervalChange = { _minAlarmIntervalMin.value = it },
+                    onMaxAlarmIntervalChange = { _maxAlarmIntervalMin.value = it },
                     onStartClick = { startStudySession() },
                     onStopClick = { stopStudySession() }
                 )
@@ -191,19 +207,30 @@ class MainActivity : ComponentActivity() {
     private val _uiTimeLeftInSession = MutableStateFlow(0L)
     private val _uiTimeUntilNextAlarm = MutableStateFlow(0L)
     
+    // Settings state flows
+    private val _studyDurationMin = MutableStateFlow(90) // Default 90 minutes
+    private val _minAlarmIntervalMin = MutableStateFlow(3) // Default 3 minutes
+    private val _maxAlarmIntervalMin = MutableStateFlow(5) // Default 5 minutes
+    
     val uiTimerState: StateFlow<StudyTimerService.TimerState> = _uiTimerState
     val uiTimeLeftInSession: StateFlow<Long> = _uiTimeLeftInSession
     val uiTimeUntilNextAlarm: StateFlow<Long> = _uiTimeUntilNextAlarm
+    val studyDurationMin: StateFlow<Int> = _studyDurationMin
+    val minAlarmIntervalMin: StateFlow<Int> = _minAlarmIntervalMin
+    val maxAlarmIntervalMin: StateFlow<Int> = _maxAlarmIntervalMin
     
     private fun startStudySession() {
         val intent = Intent(this, StudyTimerService::class.java).apply {
             action = StudyTimerService.ACTION_START
+            putExtra(StudyTimerService.EXTRA_STUDY_DURATION_MIN, _studyDurationMin.value)
+            putExtra(StudyTimerService.EXTRA_MIN_ALARM_INTERVAL_MIN, _minAlarmIntervalMin.value)
+            putExtra(StudyTimerService.EXTRA_MAX_ALARM_INTERVAL_MIN, _maxAlarmIntervalMin.value)
         }
         
         // Immediately update UI state
         _uiTimerState.value = StudyTimerService.TimerState.STUDYING
-        _uiTimeLeftInSession.value = 90 * 60 * 1000L // 90 minutes
-        _uiTimeUntilNextAlarm.value = 3 * 60 * 1000L // Initial 3 minutes
+        _uiTimeLeftInSession.value = _studyDurationMin.value * 60 * 1000L // Convert minutes to ms
+        _uiTimeUntilNextAlarm.value = _minAlarmIntervalMin.value * 60 * 1000L // Initial alarm time
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(intent)
@@ -251,6 +278,12 @@ fun StudyTimerApp(
     timerState: StudyTimerService.TimerState,
     timeLeftInSession: Long,
     timeUntilNextAlarm: Long,
+    studyDurationMin: Int,
+    minAlarmIntervalMin: Int,
+    maxAlarmIntervalMin: Int,
+    onStudyDurationChange: (Int) -> Unit,
+    onMinAlarmIntervalChange: (Int) -> Unit,
+    onMaxAlarmIntervalChange: (Int) -> Unit,
     onStartClick: () -> Unit,
     onStopClick: () -> Unit
 ) {
@@ -276,7 +309,7 @@ fun StudyTimerApp(
                     color = MaterialTheme.colorScheme.primary
                 )
                 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(24.dp))
                 
                 // Timer display
                 TimerDisplay(
@@ -285,7 +318,21 @@ fun StudyTimerApp(
                     timeUntilNextAlarm = timeUntilNextAlarm
                 )
                 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // Settings section - only show when timer is idle
+                if (timerState == StudyTimerService.TimerState.IDLE) {
+                    SettingsSection(
+                        studyDurationMin = studyDurationMin,
+                        minAlarmIntervalMin = minAlarmIntervalMin,
+                        maxAlarmIntervalMin = maxAlarmIntervalMin,
+                        onStudyDurationChange = onStudyDurationChange,
+                        onMinAlarmIntervalChange = onMinAlarmIntervalChange,
+                        onMaxAlarmIntervalChange = onMaxAlarmIntervalChange
+                    )
+                    
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
                 
                 // Control buttons
                 Row(
@@ -460,14 +507,163 @@ private fun formatTime(millis: Long): String {
     }
 }
 
+@Composable
+fun SettingsSection(
+    studyDurationMin: Int,
+    minAlarmIntervalMin: Int,
+    maxAlarmIntervalMin: Int,
+    onStudyDurationChange: (Int) -> Unit,
+    onMinAlarmIntervalChange: (Int) -> Unit,
+    onMaxAlarmIntervalChange: (Int) -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFFF5F5F5)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.Start
+        ) {
+            Text(
+                text = "Settings",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
+            
+            // Study Duration Setting
+            SettingItem(
+                title = "Study Duration",
+                value = "$studyDurationMin min",
+                options = listOf(30, 60, 90, 120),
+                formatOption = { "$it min" },
+                onOptionSelected = onStudyDurationChange
+            )
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            // Alarm Interval Settings
+            Text(
+                text = "Alarm Interval: $minAlarmIntervalMin - $maxAlarmIntervalMin min",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            // Min Alarm Interval
+            SettingItem(
+                title = "Minimum",
+                value = "$minAlarmIntervalMin min",
+                options = listOf(1, 2, 3, 5, 7, 10),
+                formatOption = { "$it min" },
+                onOptionSelected = { newMin ->
+                    onMinAlarmIntervalChange(newMin)
+                    // Ensure max is greater than min
+                    if (newMin >= maxAlarmIntervalMin) {
+                        onMaxAlarmIntervalChange(newMin + 1)
+                    }
+                }
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            // Max Alarm Interval
+            SettingItem(
+                title = "Maximum",
+                value = "$maxAlarmIntervalMin min",
+                options = listOf(2, 5, 7, 10, 15, 20),
+                formatOption = { "$it min" },
+                onOptionSelected = { newMax ->
+                    // Ensure max is greater than min
+                    if (newMax > minAlarmIntervalMin) {
+                        onMaxAlarmIntervalChange(newMax)
+                    }
+                }
+            )
+        }
+    }
+}
+
+@Composable
+fun <T> SettingItem(
+    title: String,
+    value: String,
+    options: List<T>,
+    formatOption: (T) -> String,
+    onOptionSelected: (T) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = title,
+            fontSize = 14.sp,
+            modifier = Modifier.weight(1f)
+        )
+        
+        Box {
+            Button(
+                onClick = { expanded = true },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                ),
+                shape = RoundedCornerShape(8.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                modifier = Modifier.width(100.dp)
+            ) {
+                Text(text = value)
+            }
+            
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                modifier = Modifier.width(100.dp)
+            ) {
+                options.forEach { option ->
+                    DropdownMenuItem(
+                        text = { Text(formatOption(option)) },
+                        onClick = {
+                            onOptionSelected(option)
+                            expanded = false
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
 @Preview(showBackground = true)
 @Composable
 fun StudyTimerPreview() {
     StudyTimerTheme {
         StudyTimerApp(
-            timerState = StudyTimerService.TimerState.STUDYING,
+            timerState = StudyTimerService.TimerState.IDLE,
             timeLeftInSession = 45 * 60 * 1000L, // 45 minutes
             timeUntilNextAlarm = 2 * 60 * 1000L, // 2 minutes
+            studyDurationMin = 90,
+            minAlarmIntervalMin = 3,
+            maxAlarmIntervalMin = 5,
+            onStudyDurationChange = {},
+            onMinAlarmIntervalChange = {},
+            onMaxAlarmIntervalChange = {},
             onStartClick = {},
             onStopClick = {}
         )
