@@ -257,9 +257,6 @@ class StudyTimerService : Service() {
     }
     
     private fun startEyeRest() {
-        // Pause study timer
-        sessionTimer?.cancel()
-        
         _timerState.value = TimerState.EYE_REST
         updateNotification("Rest your eyes for 10 seconds")
         
@@ -281,20 +278,9 @@ class StudyTimerService : Service() {
     
     private fun resumeStudySession() {
         _timerState.value = TimerState.STUDYING
+        updateNotification() // Update notification to reflect STUDYING state
         
-        // Resume session timer with remaining time
-        sessionTimer = object : CountDownTimer(_timeLeftInSession.value, 1000) {
-            override fun onTick(millisUntilFinished: Long) {
-                _timeLeftInSession.value = millisUntilFinished
-                updateNotification()
-            }
-            
-            override fun onFinish() {
-                startBreak()
-            }
-        }.start()
-        
-        // Schedule next alarm
+        // Schedule next alarm (since the main timer didn't stop, we just need the next alarm)
         scheduleNextAlarm()
     }
     
