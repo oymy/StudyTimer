@@ -107,12 +107,7 @@ fun SettingsCard(
                 value = "$studyDurationMin min",
                 options = listOf(30, 45, 60, 75, 90, 105, 120),
                 formatOption = { "$it min" },
-                onOptionSelected = { selectedDuration ->
-                    // Validate before updating
-                    if (selectedDuration >= minAlarmIntervalMin && selectedDuration >= maxAlarmIntervalMin) {
-                        onStudyDurationChange(selectedDuration)
-                    }
-                }
+                onOptionSelected = onStudyDurationChange
             )
             
             Spacer(modifier = Modifier.height(16.dp)) // Increased spacing
@@ -131,12 +126,7 @@ fun SettingsCard(
                 value = "$minAlarmIntervalMin min",
                 options = listOf(1, 2, 3, 4, 5),
                 formatOption = { "$it min" },
-                onOptionSelected = { selectedMinInterval ->
-                    // Validate before updating
-                    if (selectedMinInterval <= maxAlarmIntervalMin && selectedMinInterval <= studyDurationMin) {
-                        onMinAlarmIntervalChange(selectedMinInterval)
-                    }
-                }
+                onOptionSelected = onMinAlarmIntervalChange
             )
             
             Spacer(modifier = Modifier.height(8.dp))
@@ -147,12 +137,7 @@ fun SettingsCard(
                 value = "$maxAlarmIntervalMin min",
                 options = listOf(3, 4, 5, 6, 7, 8, 9, 10),
                 formatOption = { "$it min" },
-                onOptionSelected = { selectedMaxInterval ->
-                    // Validate before updating
-                    if (selectedMaxInterval >= minAlarmIntervalMin && selectedMaxInterval <= studyDurationMin) {
-                        onMaxAlarmIntervalChange(selectedMaxInterval)
-                    }
-                }
+                onOptionSelected = onMaxAlarmIntervalChange
             )
         }
     }

@@ -86,9 +86,30 @@ class MainActivity : ComponentActivity() {
                         studyDurationFlow = _studyDurationMin,
                         minAlarmIntervalFlow = _minAlarmIntervalMin,
                         maxAlarmIntervalFlow = _maxAlarmIntervalMin,
-                        onStudyDurationChange = { _studyDurationMin.value = it },
-                        onMinAlarmIntervalChange = { _minAlarmIntervalMin.value = it },
-                        onMaxAlarmIntervalChange = { _maxAlarmIntervalMin.value = it },
+                        onStudyDurationChange = { newDuration ->
+                            // Validate: Study duration >= min/max intervals
+                            val minInterval = _minAlarmIntervalMin.value
+                            val maxInterval = _maxAlarmIntervalMin.value
+                            if (newDuration >= minInterval && newDuration >= maxInterval) {
+                                _studyDurationMin.value = newDuration
+                            }
+                        },
+                        onMinAlarmIntervalChange = { newMinInterval ->
+                            // Validate: Min interval <= max interval && Min interval <= study duration
+                            val maxInterval = _maxAlarmIntervalMin.value
+                            val studyDuration = _studyDurationMin.value
+                            if (newMinInterval <= maxInterval && newMinInterval <= studyDuration) {
+                                _minAlarmIntervalMin.value = newMinInterval
+                            }
+                        },
+                        onMaxAlarmIntervalChange = { newMaxInterval ->
+                            // Validate: Max interval >= min interval && Max interval <= study duration
+                            val minInterval = _minAlarmIntervalMin.value
+                            val studyDuration = _studyDurationMin.value
+                            if (newMaxInterval >= minInterval && newMaxInterval <= studyDuration) {
+                                _maxAlarmIntervalMin.value = newMaxInterval
+                            }
+                        },
                         onNavigateBack = { _showSettings.value = false }
                     )
                 } else {
