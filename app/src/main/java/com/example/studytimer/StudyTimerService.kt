@@ -34,12 +34,11 @@ class StudyTimerService : Service() {
         // Default timer constants
         private const val DEFAULT_STUDY_TIME_MIN = 90 // 90 minutes
         private const val DEFAULT_BREAK_TIME_MIN = 20 // 20 minutes
-        private const val DEFAULT_EYE_REST_TIME_SEC = 10 // 10 seconds
-        private const val DEFAULT_MIN_ALARM_INTERVAL_MIN = 3 // 3 minutes
-        private const val DEFAULT_MAX_ALARM_INTERVAL_MIN = 5 // 5 minutes
+        const val EYE_REST_TIME_MS = 10 * 1000L // 10 seconds - fixed
+        const val DEFAULT_MIN_ALARM_INTERVAL_MIN = 3
+        const val DEFAULT_MAX_ALARM_INTERVAL_MIN = 5
         
         // Fixed constants
-        private const val EYE_REST_TIME_MS = 10 * 1000L // 10 seconds - fixed
         
         // Actions
         const val ACTION_START = "com.example.studytimer.action.START"
