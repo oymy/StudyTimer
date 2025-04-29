@@ -137,13 +137,20 @@ class MainActivity : ComponentActivity() {
                     val timerState = serviceTimerState?.value ?: uiTimerStateState.value
                     val timeLeftInSession = serviceTimeLeftInSession?.value ?: uiTimeLeftInSessionState.value
                     val timeUntilNextAlarm = serviceTimeUntilNextAlarm?.value ?: uiTimeUntilNextAlarmState.value
-                    val showNextAlarm = showNextAlarmTime.collectAsState().value // Collect the setting state
+                    val showNextAlarm = showNextAlarmTime.collectAsState().value
+                    // Collect current settings values
+                    val currentStudyDuration = _studyDurationMin.collectAsState().value
+                    val currentMinInterval = _minAlarmIntervalMin.collectAsState().value
+                    val currentMaxInterval = _maxAlarmIntervalMin.collectAsState().value
                     
                     StudyTimerApp(
                         timerState = timerState,
                         timeLeftInSession = timeLeftInSession,
                         timeUntilNextAlarm = timeUntilNextAlarm,
-                        showNextAlarmTime = showNextAlarm, // Pass the boolean value
+                        showNextAlarmTime = showNextAlarm,
+                        studyDurationMin = currentStudyDuration, // Pass setting
+                        minAlarmIntervalMin = currentMinInterval, // Pass setting
+                        maxAlarmIntervalMin = currentMaxInterval, // Pass setting
                         onStartClick = { startStudySession() },
                         onStopClick = { stopStudySession() },
                         onSettingsClick = { _showSettings.value = true } // Navigate to settings

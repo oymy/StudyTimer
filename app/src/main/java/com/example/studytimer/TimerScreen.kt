@@ -30,6 +30,9 @@ fun StudyTimerApp(
     timeLeftInSession: Long,
     timeUntilNextAlarm: Long,
     showNextAlarmTime: Boolean,
+    studyDurationMin: Int,
+    minAlarmIntervalMin: Int,
+    maxAlarmIntervalMin: Int,
     onStartClick: () -> Unit,
     onStopClick: () -> Unit,
     onSettingsClick: () -> Unit
@@ -61,11 +64,23 @@ fun StudyTimerApp(
                 // Timer Display (CircularProgressIndicator + Text)
                 Box(contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(
-                        progress = if (timerState == StudyTimerService.TimerState.STUDYING || timerState == StudyTimerService.TimerState.BREAK) {
-                            (timeLeftInSession / (90f * 60 * 1000)).toFloat() // Adjust total time if needed
-                        } else {
-                            1f // Full circle when idle or resting
-                        },
+                        progress = {
+                            // Calculate progress based on the current state and its duration
+                            val totalDurationMs = when (timerState) {
+                                StudyTimerService.TimerState.STUDYING -> studyDurationMin * 60 * 1000L
+                                StudyTimerService.TimerState.BREAK -> 20 * 60 * 1000L // Use constant break time
+                                StudyTimerService.TimerState.EYE_REST -> StudyTimerService.EYE_REST_TIME_MS // Use service constant
+                                StudyTimerService.TimerState.IDLE -> 1L // Avoid division by zero, progress is 1f anyway
+                            }
+                            if (totalDurationMs > 0 && (timerState != StudyTimerService.TimerState.IDLE && timerState != StudyTimerService.TimerState.EYE_REST)) {
+                                (timeLeftInSession.toFloat() / totalDurationMs.toFloat())
+                            } else if (timerState == StudyTimerService.TimerState.EYE_REST) {
+                                // For eye rest, show progress decreasing from full
+                                (timeLeftInSession.toFloat() / StudyTimerService.EYE_REST_TIME_MS.toFloat())
+                            } else {
+                                1f // Full circle when idle
+                            }
+                        }(),
                         modifier = Modifier.size(200.dp),
                         strokeWidth = 12.dp,
                         color = MaterialTheme.colorScheme.primary,
@@ -113,7 +128,7 @@ fun StudyTimerApp(
                         StudyTimerService.TimerState.EYE_REST ->
                             "Close your eyes and relax for 10 seconds."
                         StudyTimerService.TimerState.IDLE ->
-                            "90min study + 20min break cycles with eye rest alarms every 3-5min."
+                            "${studyDurationMin}min study + 20min break cycles with eye rest alarms every ${minAlarmIntervalMin}-${maxAlarmIntervalMin}min."
                     },
                     fontSize = 14.sp,
                     textAlign = TextAlign.Center,
@@ -228,6 +243,9 @@ fun TimerScreenPreviewIdle() {
             timeLeftInSession = 90 * 60 * 1000L,
             timeUntilNextAlarm = 0L,
             showNextAlarmTime = true,
+            studyDurationMin = 90,
+            minAlarmIntervalMin = 3,
+            maxAlarmIntervalMin = 5,
             onStartClick = {}, 
             onStopClick = {}, 
             onSettingsClick = {}
@@ -244,6 +262,9 @@ fun TimerScreenPreviewStudying() {
             timeLeftInSession = 45 * 60 * 1000L, 
             timeUntilNextAlarm = 2 * 60 * 1000L,
             showNextAlarmTime = true,
+            studyDurationMin = 60,
+            minAlarmIntervalMin = 4,
+            maxAlarmIntervalMin = 6,
             onStartClick = {}, 
             onStopClick = {}, 
             onSettingsClick = {}
@@ -260,6 +281,9 @@ fun TimerScreenPreviewBreak() {
             timeLeftInSession = 15 * 60 * 1000L,
             timeUntilNextAlarm = 0L,
             showNextAlarmTime = true,
+            studyDurationMin = 90,
+            minAlarmIntervalMin = 3,
+            maxAlarmIntervalMin = 5,
             onStartClick = {}, 
             onStopClick = {}, 
             onSettingsClick = {}
@@ -276,6 +300,9 @@ fun TimerScreenPreviewEyeRest() {
             timeLeftInSession = 5 * 1000L, // Show remaining eye rest time
             timeUntilNextAlarm = 0L,
             showNextAlarmTime = true,
+            studyDurationMin = 90,
+            minAlarmIntervalMin = 3,
+            maxAlarmIntervalMin = 5,
             onStartClick = {}, 
             onStopClick = {}, 
             onSettingsClick = {}
