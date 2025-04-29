@@ -4,12 +4,13 @@ A modern Android application designed to help you maintain productive study sess
 
 ## Features
 
-- **Customizable Study Sessions**: Default 90-minute study sessions followed by 20-minute breaks
-- **Eye Rest Reminders**: Random alarms every 3-5 minutes during study sessions to remind you to rest your eyes
-- **10-Second Eye Rest**: Brief eye rest periods after each alarm to reduce eye strain
-- **Background Operation**: Continues to run when the app is in the background or the screen is off
-- **Modern UI**: Built with Jetpack Compose with a clean, intuitive interface
-- **Visual Progress**: Circular progress indicator to visualize remaining time
+*   **Random Alarms:** During study sessions, receive random alarms every 3-5 minutes (configurable).
+*   **Eye Rest Periods:** After each alarm, a mandatory 10-second eye rest period is initiated.
+*   **Configurable Settings:** Adjust study duration, minimum/maximum alarm intervals via the settings screen.
+*   **Optional Next Alarm Countdown:** Choose whether to display the countdown timer for the next random alarm (default is off).
+*   **Progress Visualization:** A circular progress indicator visually represents the remaining time in the current session (study or break).
+*   **Background Operation:** The timer continues to run accurately even when the app is in the background or the screen is off, thanks to a foreground service.
+*   **Notifications:** Receive notifications for alarms, eye rest periods, and session transitions.
 
 ## How It Works
 
