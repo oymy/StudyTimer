@@ -18,13 +18,16 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    studyDurationMin: Int,
-    minAlarmIntervalMin: Int,
-    maxAlarmIntervalMin: Int,
+    studyDurationFlow: StateFlow<Int>,
+    minAlarmIntervalFlow: StateFlow<Int>,
+    maxAlarmIntervalFlow: StateFlow<Int>,
     onStudyDurationChange: (Int) -> Unit,
     onMinAlarmIntervalChange: (Int) -> Unit,
     onMaxAlarmIntervalChange: (Int) -> Unit,
@@ -49,9 +52,9 @@ fun SettingsScreen(
                 .fillMaxSize()
         ) {
             SettingsCard(
-                studyDurationMin = studyDurationMin,
-                minAlarmIntervalMin = minAlarmIntervalMin,
-                maxAlarmIntervalMin = maxAlarmIntervalMin,
+                studyDurationFlow = studyDurationFlow,
+                minAlarmIntervalFlow = minAlarmIntervalFlow,
+                maxAlarmIntervalFlow = maxAlarmIntervalFlow,
                 onStudyDurationChange = onStudyDurationChange,
                 onMinAlarmIntervalChange = onMinAlarmIntervalChange,
                 onMaxAlarmIntervalChange = onMaxAlarmIntervalChange
@@ -62,13 +65,18 @@ fun SettingsScreen(
 
 @Composable
 fun SettingsCard(
-    studyDurationMin: Int,
-    minAlarmIntervalMin: Int,
-    maxAlarmIntervalMin: Int,
+    studyDurationFlow: StateFlow<Int>,
+    minAlarmIntervalFlow: StateFlow<Int>,
+    maxAlarmIntervalFlow: StateFlow<Int>,
     onStudyDurationChange: (Int) -> Unit,
     onMinAlarmIntervalChange: (Int) -> Unit,
     onMaxAlarmIntervalChange: (Int) -> Unit
 ) {
+    // Observe the flows to get the current state values
+    val studyDurationMin by studyDurationFlow.collectAsState()
+    val minAlarmIntervalMin by minAlarmIntervalFlow.collectAsState()
+    val maxAlarmIntervalMin by maxAlarmIntervalFlow.collectAsState()
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -97,9 +105,14 @@ fun SettingsCard(
             SettingItem(
                 title = "Study Duration",
                 value = "$studyDurationMin min",
-                options = listOf(30, 60, 90, 120),
+                options = listOf(30, 45, 60, 75, 90, 105, 120),
                 formatOption = { "$it min" },
-                onOptionSelected = onStudyDurationChange
+                onOptionSelected = { selectedDuration ->
+                    // Validate before updating
+                    if (selectedDuration >= minAlarmIntervalMin && selectedDuration >= maxAlarmIntervalMin) {
+                        onStudyDurationChange(selectedDuration)
+                    }
+                }
             )
             
             Spacer(modifier = Modifier.height(16.dp)) // Increased spacing
@@ -116,13 +129,12 @@ fun SettingsCard(
             SettingItem(
                 title = "Minimum Interval",
                 value = "$minAlarmIntervalMin min",
-                options = listOf(1, 2, 3, 5, 7, 10),
+                options = listOf(1, 2, 3, 4, 5),
                 formatOption = { "$it min" },
-                onOptionSelected = { newMin ->
-                    onMinAlarmIntervalChange(newMin)
-                    // Ensure max is greater than min
-                    if (newMin >= maxAlarmIntervalMin) {
-                        onMaxAlarmIntervalChange(newMin + 1)
+                onOptionSelected = { selectedMinInterval ->
+                    // Validate before updating
+                    if (selectedMinInterval <= maxAlarmIntervalMin && selectedMinInterval <= studyDurationMin) {
+                        onMinAlarmIntervalChange(selectedMinInterval)
                     }
                 }
             )
@@ -133,14 +145,13 @@ fun SettingsCard(
             SettingItem(
                 title = "Maximum Interval",
                 value = "$maxAlarmIntervalMin min",
-                options = listOf(2, 5, 7, 10, 15, 20),
+                options = listOf(3, 4, 5, 6, 7, 8, 9, 10),
                 formatOption = { "$it min" },
-                onOptionSelected = { newMax ->
-                    // Ensure max is greater than min
-                    if (newMax > minAlarmIntervalMin) {
-                        onMaxAlarmIntervalChange(newMax)
+                onOptionSelected = { selectedMaxInterval ->
+                    // Validate before updating
+                    if (selectedMaxInterval >= minAlarmIntervalMin && selectedMaxInterval <= studyDurationMin) {
+                        onMaxAlarmIntervalChange(selectedMaxInterval)
                     }
-                    // Optionally, provide feedback if the selection is invalid
                 }
             )
         }
@@ -207,10 +218,11 @@ fun <T> SettingItem(
 @Composable
 fun SettingsScreenPreview() {
     StudyTimerTheme {
+        // Use MutableStateFlow for preview purposes
         SettingsScreen(
-            studyDurationMin = 90,
-            minAlarmIntervalMin = 3,
-            maxAlarmIntervalMin = 5,
+            studyDurationFlow = remember { MutableStateFlow(90) },
+            minAlarmIntervalFlow = remember { MutableStateFlow(3) },
+            maxAlarmIntervalFlow = remember { MutableStateFlow(5) },
             onStudyDurationChange = {},
             onMinAlarmIntervalChange = {},
             onMaxAlarmIntervalChange = {},

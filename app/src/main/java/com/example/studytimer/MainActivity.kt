@@ -123,9 +123,9 @@ class MainActivity : ComponentActivity() {
                 if (showSettings) {
                     // Show Settings Screen
                     SettingsScreen(
-                        studyDurationMin = _studyDurationMin.value,
-                        minAlarmIntervalMin = _minAlarmIntervalMin.value,
-                        maxAlarmIntervalMin = _maxAlarmIntervalMin.value,
+                        studyDurationFlow = _studyDurationMin,
+                        minAlarmIntervalFlow = _minAlarmIntervalMin,
+                        maxAlarmIntervalFlow = _maxAlarmIntervalMin,
                         onStudyDurationChange = { _studyDurationMin.value = it },
                         onMinAlarmIntervalChange = { _minAlarmIntervalMin.value = it },
                         onMaxAlarmIntervalChange = { _maxAlarmIntervalMin.value = it },
