@@ -81,7 +81,7 @@ class MainActivity : ComponentActivity() {
         _studyDurationMin.value = prefs.getInt(KEY_STUDY_DURATION, 90)
         _minAlarmIntervalMin.value = prefs.getInt(KEY_MIN_ALARM, 3)
         _maxAlarmIntervalMin.value = prefs.getInt(KEY_MAX_ALARM, 5)
-        _showNextAlarmTime.value = prefs.getBoolean(KEY_SHOW_NEXT_ALARM, true)
+        _showNextAlarmTime.value = prefs.getBoolean(KEY_SHOW_NEXT_ALARM, false)
         
         setContent {
             StudyTimerTheme {
@@ -207,7 +207,7 @@ class MainActivity : ComponentActivity() {
     private val _studyDurationMin = MutableStateFlow(90) // Default 90 minutes
     private val _minAlarmIntervalMin = MutableStateFlow(3) // Default 3 minutes
     private val _maxAlarmIntervalMin = MutableStateFlow(5) // Default 5 minutes
-    private val _showNextAlarmTime = MutableStateFlow(true)
+    private val _showNextAlarmTime = MutableStateFlow(false) // Default to false
     
     // Navigation state flow
     private val _showSettings = MutableStateFlow(false)

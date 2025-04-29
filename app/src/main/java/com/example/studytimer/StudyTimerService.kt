@@ -99,7 +99,7 @@ class StudyTimerService : Service() {
     private val maxAlarmIntervalMs: Long
         get() = maxAlarmIntervalMin * 60 * 1000L
     
-    private var showNextAlarmTimeInNotification: Boolean = true // Default value
+    private var showNextAlarmTimeInNotification: Boolean = false // Default value
     
     inner class LocalBinder : Binder() {
         fun getService(): StudyTimerService = this@StudyTimerService
@@ -128,7 +128,7 @@ class StudyTimerService : Service() {
                     studyDurationMin = it.getIntExtra(EXTRA_STUDY_DURATION_MIN, DEFAULT_STUDY_TIME_MIN)
                     minAlarmIntervalMin = it.getIntExtra(EXTRA_MIN_ALARM_INTERVAL_MIN, DEFAULT_MIN_ALARM_INTERVAL_MIN)
                     maxAlarmIntervalMin = it.getIntExtra(EXTRA_MAX_ALARM_INTERVAL_MIN, DEFAULT_MAX_ALARM_INTERVAL_MIN)
-                    showNextAlarmTimeInNotification = it.getBooleanExtra(EXTRA_SHOW_NEXT_ALARM_TIME, true) // Get the setting
+                    showNextAlarmTimeInNotification = it.getBooleanExtra(EXTRA_SHOW_NEXT_ALARM_TIME, false) // Get the setting
                     
                     // Ensure min alarm interval is less than max
                     if (minAlarmIntervalMin >= maxAlarmIntervalMin) {
