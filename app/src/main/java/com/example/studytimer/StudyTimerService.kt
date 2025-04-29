@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.util.Random
 import java.util.concurrent.TimeUnit
+import kotlin.math.roundToInt
 
 class StudyTimerService : Service() {
     companion object {
