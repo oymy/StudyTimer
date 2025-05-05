@@ -1,4 +1,4 @@
-package com.example.studytimer
+package com.oymyisme.studytimer
 
 import org.junit.Test
 

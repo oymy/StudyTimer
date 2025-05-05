@@ -20,7 +20,7 @@
         android:theme="@style/Theme.StudyTimer"
         tools:targetApi="31">
         <activity
-            android:name=".MainActivity"
+            android:name="com.oymyisme.studytimer.MainActivity"
             android:exported="true"
             android:label="@string/app_name"
             android:theme="@style/Theme.StudyTimer">
@@ -32,7 +32,7 @@
         
         <!-- Background service for timer functionality -->
         <service
-            android:name=".StudyTimerService"
+            android:name="com.oymyisme.studytimer.StudyTimerService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />

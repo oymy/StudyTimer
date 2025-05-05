@@ -1,4 +1,4 @@
-package com.example.studytimer
+package com.oymyisme.studytimer
 
 import android.Manifest
 import android.content.ComponentName
@@ -19,7 +19,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
-import com.example.studytimer.ui.theme.StudyTimerTheme
+import com.oymyisme.studytimer.ui.theme.StudyTimerTheme
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

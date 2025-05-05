@@ -1,4 +1,4 @@
-package com.example.studytimer
+package com.oymyisme.studytimer
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -42,15 +42,15 @@ class StudyTimerService : Service() {
         // Fixed constants
         
         // Actions
-        const val ACTION_START = "com.example.studytimer.action.START"
-        const val ACTION_STOP = "com.example.studytimer.action.STOP"
+        const val ACTION_START = "com.oymyisme.studytimer.action.START"
+        const val ACTION_STOP = "com.oymyisme.studytimer.action.STOP"
         
         // Extra keys for intent parameters
-        const val EXTRA_STUDY_DURATION_MIN = "com.example.studytimer.extra.STUDY_DURATION_MIN"
-        const val EXTRA_MIN_ALARM_INTERVAL_MIN = "com.example.studytimer.extra.MIN_ALARM_INTERVAL_MIN"
-        const val EXTRA_MAX_ALARM_INTERVAL_MIN = "com.example.studytimer.extra.MAX_ALARM_INTERVAL_MIN"
-        const val EXTRA_SHOW_NEXT_ALARM_TIME = "com.example.studytimer.extra.SHOW_NEXT_ALARM_TIME"
-        const val EXTRA_BREAK_DURATION_MIN = "com.example.studytimer.extra.BREAK_DURATION_MIN"
+        const val EXTRA_STUDY_DURATION_MIN = "com.oymyisme.studytimer.extra.STUDY_DURATION_MIN"
+        const val EXTRA_MIN_ALARM_INTERVAL_MIN = "com.oymyisme.studytimer.extra.MIN_ALARM_INTERVAL_MIN"
+        const val EXTRA_MAX_ALARM_INTERVAL_MIN = "com.oymyisme.studytimer.extra.MAX_ALARM_INTERVAL_MIN"
+        const val EXTRA_SHOW_NEXT_ALARM_TIME = "com.oymyisme.studytimer.extra.SHOW_NEXT_ALARM_TIME"
+        const val EXTRA_BREAK_DURATION_MIN = "com.oymyisme.studytimer.extra.BREAK_DURATION_MIN"
     }
     
     // Timer state

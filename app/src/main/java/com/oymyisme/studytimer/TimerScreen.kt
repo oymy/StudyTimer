@@ -1,4 +1,4 @@
-package com.example.studytimer
+package com.oymyisme.studytimer
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,8 +18,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.concurrent.TimeUnit
-import com.example.studytimer.StudyTimerService
-import com.example.studytimer.ui.theme.StudyTimerTheme
+import com.oymyisme.studytimer.StudyTimerService
+import com.oymyisme.studytimer.ui.theme.StudyTimerTheme
 
 /**
  * The main UI composable for the Timer screen.

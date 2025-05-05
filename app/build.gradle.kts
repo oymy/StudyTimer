@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.studytimer"
+    namespace = "com.oymyisme.studytimer"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.studytimer"
+        applicationId = "com.oymyisme.studytimer"
         minSdk = 24
         targetSdk = 35
         versionCode = 1
