@@ -78,8 +78,22 @@ fun StudyTimerApp(
                             // Calculate progress based on the current state and its duration
                             // Calculate progress based on the current state and its duration
                             val totalDurationMs = when (timerState) {
-                                StudyTimerService.TimerState.STUDYING -> studyDurationMin * 60 * 1000L
-                                StudyTimerService.TimerState.BREAK -> breakDurationMin * 60 * 1000L
+                                StudyTimerService.TimerState.STUDYING -> {
+                                    if (testModeEnabled && TestMode.isEnabled) {
+                                        // 测试模式下使用 1 分钟
+                                        TestMode.TEST_STUDY_DURATION_MIN * 60 * 1000L
+                                    } else {
+                                        studyDurationMin * 60 * 1000L
+                                    }
+                                }
+                                StudyTimerService.TimerState.BREAK -> {
+                                    if (testModeEnabled && TestMode.isEnabled) {
+                                        // 测试模式下使用 20 秒
+                                        20 * 1000L // 20秒
+                                    } else {
+                                        breakDurationMin * 60 * 1000L
+                                    }
+                                }
                                 StudyTimerService.TimerState.EYE_REST -> StudyTimerService.EYE_REST_TIME_MS
                                 StudyTimerService.TimerState.IDLE -> 1L // Avoid division by zero, progress is 1f anyway
                             }// Full circle when idle
