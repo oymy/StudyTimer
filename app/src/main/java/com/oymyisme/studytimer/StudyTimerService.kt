@@ -7,6 +7,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.media.AudioAttributes
+import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.RingtoneManager
 import android.os.Binder
@@ -357,15 +358,36 @@ class StudyTimerService : Service() {
             val soundUri = SoundOptions.getSoundUriById(this, alarmSoundType)
             MediaPlayer().apply {
                 setDataSource(this@StudyTimerService, soundUri)
+                
+                // 检测耳机连接状态
+                val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+                val isHeadsetConnected = audioManager.isWiredHeadsetOn || audioManager.isBluetoothA2dpOn
+                
+                // 设置音频属性
                 setAudioAttributes(
                     AudioAttributes.Builder()
                         .setUsage(AudioAttributes.USAGE_ALARM)
                         .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                         .build()
                 )
+                
+                // 如果耳机连接，将音频输出设置为耳机
+                if (isHeadsetConnected) {
+                    audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+                    audioManager.isSpeakerphoneOn = false
+                }
+                
                 prepare()
                 start()
-                setOnCompletionListener { release() }
+                setOnCompletionListener { 
+                    // 释放资源
+                    release() 
+                    
+                    // 恢复音频模式
+                    if (isHeadsetConnected) {
+                        audioManager.mode = AudioManager.MODE_NORMAL
+                    }
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error playing alarm sound", e)
@@ -377,15 +399,35 @@ class StudyTimerService : Service() {
             val alarmSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
             MediaPlayer().apply {
                 setDataSource(this@StudyTimerService, alarmSound)
+                
+                // 检测耳机连接状态
+                val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+                val isHeadsetConnected = audioManager.isWiredHeadsetOn || audioManager.isBluetoothA2dpOn
+                
                 setAudioAttributes(
                     AudioAttributes.Builder()
                         .setUsage(AudioAttributes.USAGE_ALARM)
                         .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                         .build()
                 )
-                setOnCompletionListener { it.release() }
+                
+                // 如果耳机连接，将音频输出设置为耳机
+                if (isHeadsetConnected) {
+                    audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+                    audioManager.isSpeakerphoneOn = false
+                }
+                
                 prepare()
                 start()
+                setOnCompletionListener { 
+                    // 释放资源
+                    it.release() 
+                    
+                    // 恢复音频模式
+                    if (isHeadsetConnected) {
+                        audioManager.mode = AudioManager.MODE_NORMAL
+                    }
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error playing break sound", e)
@@ -398,15 +440,35 @@ class StudyTimerService : Service() {
             val soundUri = SoundOptions.getSoundUriById(this, eyeRestSoundType)
             MediaPlayer().apply {
                 setDataSource(this@StudyTimerService, soundUri)
+                
+                // 检测耳机连接状态
+                val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+                val isHeadsetConnected = audioManager.isWiredHeadsetOn || audioManager.isBluetoothA2dpOn
+                
                 setAudioAttributes(
                     AudioAttributes.Builder()
                         .setUsage(AudioAttributes.USAGE_NOTIFICATION)
                         .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                         .build()
                 )
+                
+                // 如果耳机连接，将音频输出设置为耳机
+                if (isHeadsetConnected) {
+                    audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+                    audioManager.isSpeakerphoneOn = false
+                }
+                
                 prepare()
                 start()
-                setOnCompletionListener { release() }
+                setOnCompletionListener { 
+                    // 释放资源
+                    release() 
+                    
+                    // 恢复音频模式
+                    if (isHeadsetConnected) {
+                        audioManager.mode = AudioManager.MODE_NORMAL
+                    }
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error playing eye rest complete sound", e)
