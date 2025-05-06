@@ -18,8 +18,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.concurrent.TimeUnit
-import com.oymyisme.studytimer.StudyTimerService
 import com.oymyisme.studytimer.ui.theme.StudyTimerTheme
+import java.util.Locale
 
 /**
  * The main UI composable for the Timer screen.
@@ -65,14 +65,20 @@ fun StudyTimerApp(
                 // Timer Display (CircularProgressIndicator + Text)
                 Box(contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(
-                        progress = {
+                        progress = { // Full circle when idle
+                            // For eye rest, show progress decreasing from full
+                            // Avoid division by zero, progress is 1f anyway
+                            // Calculate progress based on the current state and its duration
                             // Calculate progress based on the current state and its duration
                             val totalDurationMs = when (timerState) {
                                 StudyTimerService.TimerState.STUDYING -> studyDurationMin * 60 * 1000L
                                 StudyTimerService.TimerState.BREAK -> breakDurationMin * 60 * 1000L
                                 StudyTimerService.TimerState.EYE_REST -> StudyTimerService.EYE_REST_TIME_MS
                                 StudyTimerService.TimerState.IDLE -> 1L // Avoid division by zero, progress is 1f anyway
-                            }
+                            }// Full circle when idle
+                            // For eye rest, show progress decreasing from full
+                            // Avoid division by zero, progress is 1f anyway
+                            // Calculate progress based on the current state and its duration
                             if (totalDurationMs > 0 && (timerState != StudyTimerService.TimerState.IDLE && timerState != StudyTimerService.TimerState.EYE_REST)) {
                                 (timeLeftInSession.toFloat() / totalDurationMs.toFloat())
                             } else if (timerState == StudyTimerService.TimerState.EYE_REST) {
@@ -81,11 +87,11 @@ fun StudyTimerApp(
                             } else {
                                 1f // Full circle when idle
                             }
-                        }(),
+                        },
                         modifier = Modifier.size(200.dp),
-                        strokeWidth = 12.dp,
                         color = MaterialTheme.colorScheme.primary,
-                        trackColor = MaterialTheme.colorScheme.secondaryContainer
+                        strokeWidth = 12.dp,
+                        trackColor = MaterialTheme.colorScheme.secondaryContainer,
                     )
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
@@ -229,9 +235,9 @@ fun formatTime(millis: Long): String {
     val seconds = TimeUnit.MILLISECONDS.toSeconds(millis) % 60
     
     return if (hours > 0) {
-        String.format("%02d:%02d:%02d", hours, minutes, seconds)
+        String.format(Locale.ENGLISH, "%02d:%02d:%02d", hours, minutes, seconds)
     } else {
-        String.format("%02d:%02d", minutes, seconds)
+        String.format(Locale.ENGLISH, "%02d:%02d", minutes, seconds)
     }
 }
 

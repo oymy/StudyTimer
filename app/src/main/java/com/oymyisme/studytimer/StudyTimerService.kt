@@ -22,6 +22,7 @@ import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.util.Locale
 import java.util.Random
 import java.util.concurrent.TimeUnit
 import kotlin.math.roundToInt
@@ -151,7 +152,7 @@ class StudyTimerService : Service() {
                 }
                 ACTION_STOP -> {
                     stopTimers()
-                    stopForeground(true)
+                    stopForeground(STOP_FOREGROUND_REMOVE )
                     stopSelf()
                 }
             }
@@ -316,7 +317,7 @@ class StudyTimerService : Service() {
     private fun playAlarmSound() {
         try {
             val alarmSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-            val mediaPlayer = MediaPlayer().apply {
+            MediaPlayer().apply {
                 setDataSource(this@StudyTimerService, alarmSound)
                 setAudioAttributes(
                     AudioAttributes.Builder()
@@ -336,7 +337,7 @@ class StudyTimerService : Service() {
     private fun playBreakSound() {
         try {
             val alarmSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-            val mediaPlayer = MediaPlayer().apply {
+            MediaPlayer().apply {
                 setDataSource(this@StudyTimerService, alarmSound)
                 setAudioAttributes(
                     AudioAttributes.Builder()
@@ -357,7 +358,7 @@ class StudyTimerService : Service() {
         try {
             // Use a gentler sound for eye rest completion
             val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-            val mediaPlayer = MediaPlayer().apply {
+            MediaPlayer().apply {
                 setDataSource(this@StudyTimerService, soundUri)
                 setAudioAttributes(
                     AudioAttributes.Builder()
@@ -431,6 +432,7 @@ class StudyTimerService : Service() {
     
     private fun formatTime(millis: Long): String {
         return String.format(
+            Locale.ENGLISH,
             "%02d:%02d:%02d",
             TimeUnit.MILLISECONDS.toHours(millis),
             TimeUnit.MILLISECONDS.toMinutes(millis) % 60,

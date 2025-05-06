@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import androidx.core.content.edit
 
 class MainActivity : ComponentActivity() {
     private var studyTimerService: StudyTimerService? = null
@@ -115,7 +116,7 @@ class MainActivity : ComponentActivity() {
                             // Validate: Max interval >= min interval && Max interval <= study duration
                             val minInterval = _minAlarmIntervalMin.value
                             val studyDuration = _studyDurationMin.value
-                            if (newMaxInterval >= minInterval && newMaxInterval <= studyDuration) {
+                            if (newMaxInterval in minInterval..studyDuration) {
                                 _maxAlarmIntervalMin.value = newMaxInterval
                             }
                         },
@@ -223,10 +224,10 @@ class MainActivity : ComponentActivity() {
     // Navigation state flow
     private val _showSettings = MutableStateFlow(false)
     
-    val uiTimerState: StateFlow<StudyTimerService.TimerState> = _uiTimerState
-    val uiTimeLeftInSession: StateFlow<Long> = _uiTimeLeftInSession
-    val uiTimeUntilNextAlarm: StateFlow<Long> = _uiTimeUntilNextAlarm
-    val showNextAlarmTime: StateFlow<Boolean> = _showNextAlarmTime
+    private val uiTimerState: StateFlow<StudyTimerService.TimerState> = _uiTimerState
+    private val uiTimeLeftInSession: StateFlow<Long> = _uiTimeLeftInSession
+    private val uiTimeUntilNextAlarm: StateFlow<Long> = _uiTimeUntilNextAlarm
+    private val showNextAlarmTime: StateFlow<Boolean> = _showNextAlarmTime
     
     // Function to calculate break duration based on study duration
     private fun calculateBreakDuration(studyDuration: Int): Int {
@@ -281,12 +282,12 @@ class MainActivity : ComponentActivity() {
         super.onStop()
         // Persist settings just in case they were changed but not saved via the settings screen lambdas ( belt-and-suspenders)
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit() 
-            .putInt(KEY_STUDY_DURATION, _studyDurationMin.value)
-            .putInt(KEY_MIN_ALARM, _minAlarmIntervalMin.value)
-            .putInt(KEY_MAX_ALARM, _maxAlarmIntervalMin.value)
-            .putBoolean(KEY_SHOW_NEXT_ALARM, _showNextAlarmTime.value)
-            .apply()
+        prefs.edit {
+            putInt(KEY_STUDY_DURATION, _studyDurationMin.value)
+                .putInt(KEY_MIN_ALARM, _minAlarmIntervalMin.value)
+                .putInt(KEY_MAX_ALARM, _maxAlarmIntervalMin.value)
+                .putBoolean(KEY_SHOW_NEXT_ALARM, _showNextAlarmTime.value)
+        }
         
         // Unbind from the service
         if (bound) {
