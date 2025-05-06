@@ -239,14 +239,13 @@ fun StudyTimerApp(
                     elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                 ) {
-                    Row(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 12.dp, horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        verticalAlignment = Alignment.CenterVertically
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // 当计时器空闲时显示 Start 和 Settings 按钮
+                        // 当计时器空闲时显示 Settings 和 Start 按钮
                         if (timerState == StudyTimerService.TimerState.IDLE) {
                             // Settings Button
                             Button(
@@ -255,7 +254,10 @@ fun StudyTimerApp(
                                     containerColor = Color(0xFF009688), // 蓝绿色，与绿色相配
                                     contentColor = Color.White
                                 ),
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp)
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(
@@ -267,7 +269,9 @@ fun StudyTimerApp(
                                     Text("Settings")
                                 }
                             }
-
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
                             // Start Button
                             Button(
                                 onClick = onStartClick,
@@ -275,7 +279,10 @@ fun StudyTimerApp(
                                     containerColor = Color(0xFF4CAF50), // Green
                                     contentColor = Color.White
                                 ),
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp)
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(Icons.Default.PlayArrow, contentDescription = "Start")
