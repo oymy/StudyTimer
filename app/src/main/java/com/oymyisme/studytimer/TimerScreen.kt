@@ -66,9 +66,9 @@ fun StudyTimerApp(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
-                
+
                 Spacer(modifier = Modifier.height(32.dp))
-                
+
                 // Timer Display (CircularProgressIndicator + Text)
                 Box(contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(
@@ -86,6 +86,7 @@ fun StudyTimerApp(
                                         studyDurationMin * 60 * 1000L
                                     }
                                 }
+
                                 StudyTimerService.TimerState.BREAK -> {
                                     if (testModeEnabled && TestMode.isEnabled) {
                                         // 测试模式下使用 20 秒
@@ -94,6 +95,7 @@ fun StudyTimerApp(
                                         breakDurationMin * 60 * 1000L
                                     }
                                 }
+
                                 StudyTimerService.TimerState.EYE_REST -> StudyTimerService.EYE_REST_TIME_MS
                                 StudyTimerService.TimerState.IDLE -> 1L // Avoid division by zero, progress is 1f anyway
                             }// Full circle when idle
@@ -120,7 +122,7 @@ fun StudyTimerApp(
                             fontSize = 32.sp,
                             fontWeight = FontWeight.Bold
                         )
-                        
+
                         // Conditionally show the next alarm time row
                         if (timerState == StudyTimerService.TimerState.STUDYING && showNextAlarmTime) {
                             Spacer(modifier = Modifier.height(8.dp))
@@ -143,18 +145,21 @@ fun StudyTimerApp(
                         }
                     }
                 }
-                
+
                 Spacer(modifier = Modifier.height(16.dp))
-                
+
                 // Instructions
                 Text(
                     text = when (timerState) {
                         StudyTimerService.TimerState.STUDYING ->
                             "Focus on your work. Alarms will sound every 3-5 minutes."
+
                         StudyTimerService.TimerState.BREAK ->
                             "Take a break! You've earned it."
+
                         StudyTimerService.TimerState.EYE_REST ->
                             "Close your eyes and relax for 10 seconds."
+
                         StudyTimerService.TimerState.IDLE ->
                             "${studyDurationMin}min study + ${breakDurationMin}min break cycles with eye rest alarms every ${minAlarmIntervalMin}-${maxAlarmIntervalMin}min."
                     },
@@ -163,91 +168,68 @@ fun StudyTimerApp(
                     color = Color.Gray,
                     modifier = Modifier.padding(8.dp)
                 )
-                
+
                 Spacer(modifier = Modifier.height(24.dp))
-                
-                // Settings button - only show when timer is idle
-                if (timerState == StudyTimerService.TimerState.IDLE) {
-                    Button(
-                        onClick = onSettingsClick,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                        ),
-                        modifier = Modifier.padding(vertical = 8.dp)
+
+                // 测试模式开关 - 只在调试版本中显示
+                if (timerState == StudyTimerService.TimerState.IDLE && TestMode.isEnabled) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 32.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (testModeEnabled)
+                                MaterialTheme.colorScheme.tertiaryContainer
+                            else
+                                MaterialTheme.colorScheme.surfaceVariant
+                        )
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.Settings,
-                                contentDescription = "Settings",
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Settings")
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(16.dp)) // Add some space after the button
-                    
-                    // 测试模式开关 - 只在调试版本中显示
-                    if (TestMode.isEnabled) {
-                        Card(
+                        Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 32.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (testModeEnabled) 
-                                    MaterialTheme.colorScheme.tertiaryContainer 
-                                else 
-                                    MaterialTheme.colorScheme.surfaceVariant
-                            )
+                                .padding(vertical = 8.dp, horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 8.dp, horizontal = 16.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column {
-                                    Text(
-                                        text = "测试模式",
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                    Text(
-                                        text = "学习：1分钟 闹钟：20秒",
-                                        fontSize = 12.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                // 使用 remember 记录当前开关状态，并从外部状态更新
-                                var switchState by remember { mutableStateOf(testModeEnabled) }
-                                // 当外部状态变化时更新开关状态
-                                LaunchedEffect(testModeEnabled) {
-                                    switchState = testModeEnabled
-                                }
-                                
-                                Switch(
-                                    checked = switchState,
-                                    onCheckedChange = { newState ->
-                                        // 先更新本地状态，然后通知外部
-                                        switchState = newState
-                                        onTestModeToggle(newState)
-                                    },
-                                    colors = SwitchDefaults.colors(
-                                        checkedThumbColor = MaterialTheme.colorScheme.primary,
-                                        checkedTrackColor = MaterialTheme.colorScheme.primaryContainer,
-                                        uncheckedThumbColor = MaterialTheme.colorScheme.outline,
-                                        uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
-                                    )
+                            Column {
+                                Text(
+                                    text = "测试模式",
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    text = "学习：1分钟 闹钟：20秒",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
+                            // 使用 remember 记录当前开关状态，并从外部状态更新
+                            var switchState by remember { mutableStateOf(testModeEnabled) }
+                            // 当外部状态变化时更新开关状态
+                            LaunchedEffect(testModeEnabled) {
+                                switchState = testModeEnabled
+                            }
+
+                            Switch(
+                                checked = switchState,
+                                onCheckedChange = { newState ->
+                                    // 先更新本地状态，然后通知外部
+                                    switchState = newState
+                                    onTestModeToggle(newState)
+                                },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = MaterialTheme.colorScheme.primary,
+                                    checkedTrackColor = MaterialTheme.colorScheme.primaryContainer,
+                                    uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                                )
+                            )
                         }
-                        Spacer(modifier = Modifier.height(16.dp))
                     }
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
-                
+
                 // Control buttons
                 Card(
                     modifier = Modifier
@@ -264,8 +246,29 @@ fun StudyTimerApp(
                         horizontalArrangement = Arrangement.SpaceEvenly,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Start Button (visible when idle)
+                        // 当计时器空闲时显示 Start 和 Settings 按钮
                         if (timerState == StudyTimerService.TimerState.IDLE) {
+                            // Settings Button
+                            Button(
+                                onClick = onSettingsClick,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                ),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.Settings,
+                                        contentDescription = "Settings",
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Settings")
+                                }
+                            }
+
+                            // Start Button
                             Button(
                                 onClick = onStartClick,
                                 colors = ButtonDefaults.buttonColors(
@@ -281,7 +284,7 @@ fun StudyTimerApp(
                                 }
                             }
                         }
-                        
+
                         // Stop Button (visible when running)
                         if (timerState != StudyTimerService.TimerState.IDLE) {
                             Button(
@@ -304,22 +307,23 @@ fun StudyTimerApp(
             }
         }
     }
-}
 
-/**
- * Helper function to format time in milliseconds to HH:MM:SS or MM:SS format.
- */
-fun formatTime(millis: Long): String {
-    val hours = TimeUnit.MILLISECONDS.toHours(millis)
-    val minutes = TimeUnit.MILLISECONDS.toMinutes(millis) % 60
-    val seconds = TimeUnit.MILLISECONDS.toSeconds(millis) % 60
-    
-    return if (hours > 0) {
-        String.format(Locale.ENGLISH, "%02d:%02d:%02d", hours, minutes, seconds)
-    } else {
-        String.format(Locale.ENGLISH, "%02d:%02d", minutes, seconds)
-    }
 }
+    /**
+     * Helper function to format time in milliseconds to HH:MM:SS or MM:SS format.
+     */
+    fun formatTime(millis: Long): String {
+        val hours = TimeUnit.MILLISECONDS.toHours(millis)
+        val minutes = TimeUnit.MILLISECONDS.toMinutes(millis) % 60
+        val seconds = TimeUnit.MILLISECONDS.toSeconds(millis) % 60
+
+        return if (hours > 0) {
+            String.format(Locale.ENGLISH, "%02d:%02d:%02d", hours, minutes, seconds)
+        } else {
+            String.format(Locale.ENGLISH, "%02d:%02d", minutes, seconds)
+        }
+    }
+
 
 @Preview(showBackground = true)
 @Composable
