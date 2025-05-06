@@ -252,8 +252,8 @@ fun StudyTimerApp(
                             Button(
                                 onClick = onSettingsClick,
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                    containerColor = Color(0xFF009688), // 蓝绿色，与绿色相配
+                                    contentColor = Color.White
                                 ),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
