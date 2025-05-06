@@ -66,3 +66,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 - Inspired by productivity techniques and eye health research
 - Built with modern Android development practices
+- Referenced [this tutorial video](https://www.bilibili.com/video/BV1naLozQEBq/?spm_id_from=333.337.search-card.all.click&vd_source=43e5708cd916f5c459da3d2ed3eebefc) for implementation ideas
