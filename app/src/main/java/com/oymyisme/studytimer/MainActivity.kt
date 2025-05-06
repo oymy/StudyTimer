@@ -166,9 +166,20 @@ class MainActivity : ComponentActivity() {
                         minAlarmIntervalMin = currentMinInterval, // Pass setting
                         maxAlarmIntervalMin = currentMaxInterval, // Pass setting
                         breakDurationMin = currentBreakDuration, // Pass calculated break duration
+                        testModeEnabled = _testModeEnabled.value, // Pass test mode state
                         onStartClick = { startStudySession() },
                         onStopClick = { stopStudySession() },
-                        onSettingsClick = { _showSettings.value = true } // Navigate to settings
+                        onSettingsClick = { _showSettings.value = true }, // Navigate to settings
+                        onTestModeToggle = { enabled ->
+                            // 更新测试模式状态
+                            _testModeEnabled.value = enabled
+                            // 立即显示更新结果
+                            Toast.makeText(
+                                this@MainActivity,
+                                if (enabled) "测试模式已启用" else "测试模式已关闭",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        } // Handle test mode toggle
                     )
                 }
             }
@@ -233,6 +244,9 @@ class MainActivity : ComponentActivity() {
     private val _alarmSoundType = MutableStateFlow(SoundOptions.DEFAULT_ALARM_SOUND_TYPE) // 默认闹钟提示音
     private val _eyeRestSoundType = MutableStateFlow(SoundOptions.DEFAULT_EYE_REST_SOUND_TYPE) // 默认休息结束提示音
     
+    // 测试模式状态
+    private val _testModeEnabled = MutableStateFlow(false)
+    
     // Navigation state flow
     private val _showSettings = MutableStateFlow(false)
     
@@ -242,6 +256,7 @@ class MainActivity : ComponentActivity() {
     private val showNextAlarmTime: StateFlow<Boolean> = _showNextAlarmTime
     private val alarmSoundType: StateFlow<String> = _alarmSoundType
     private val eyeRestSoundType: StateFlow<String> = _eyeRestSoundType
+    private val testModeEnabled: StateFlow<Boolean> = _testModeEnabled
     
     // Function to calculate break duration based on study duration
     private fun calculateBreakDuration(studyDuration: Int): Int {
@@ -252,15 +267,23 @@ class MainActivity : ComponentActivity() {
     private fun startStudySession() {
         val intent = Intent(this, StudyTimerService::class.java).apply {
             action = StudyTimerService.ACTION_START
-            val studyDuration = _studyDurationMin.value
-            val breakDuration = calculateBreakDuration(studyDuration) // Calculate break duration
+            
+            // 根据测试模式状态决定使用的参数
+            val testMode = TestMode.isEnabled && _testModeEnabled.value
+            
+            val studyDuration = if (testMode) TestMode.getStudyDurationMin() else _studyDurationMin.value
+            val breakDuration = if (testMode) TestMode.getBreakDurationMin() else calculateBreakDuration(studyDuration)
+            val minAlarmInterval = if (testMode) TestMode.getMinAlarmIntervalMin() else _minAlarmIntervalMin.value
+            val maxAlarmInterval = if (testMode) TestMode.getMaxAlarmIntervalMin() else _maxAlarmIntervalMin.value
+            
             putExtra(StudyTimerService.EXTRA_STUDY_DURATION_MIN, studyDuration)
-            putExtra(StudyTimerService.EXTRA_BREAK_DURATION_MIN, breakDuration) // Pass break duration to service
-            putExtra(StudyTimerService.EXTRA_MIN_ALARM_INTERVAL_MIN, _minAlarmIntervalMin.value)
-            putExtra(StudyTimerService.EXTRA_MAX_ALARM_INTERVAL_MIN, _maxAlarmIntervalMin.value)
+            putExtra(StudyTimerService.EXTRA_BREAK_DURATION_MIN, breakDuration)
+            putExtra(StudyTimerService.EXTRA_MIN_ALARM_INTERVAL_MIN, minAlarmInterval)
+            putExtra(StudyTimerService.EXTRA_MAX_ALARM_INTERVAL_MIN, maxAlarmInterval)
             putExtra(StudyTimerService.EXTRA_SHOW_NEXT_ALARM_TIME, _showNextAlarmTime.value)
             putExtra(StudyTimerService.EXTRA_ALARM_SOUND_TYPE, _alarmSoundType.value)
             putExtra(StudyTimerService.EXTRA_EYE_REST_SOUND_TYPE, _eyeRestSoundType.value)
+            putExtra(StudyTimerService.EXTRA_TEST_MODE, testMode) // 传递测试模式状态
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(intent)

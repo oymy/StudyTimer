@@ -54,6 +54,11 @@ class StudyTimerService : Service() {
         const val EXTRA_BREAK_DURATION_MIN = "com.oymyisme.studytimer.extra.BREAK_DURATION_MIN"
         const val EXTRA_ALARM_SOUND_TYPE = "com.oymyisme.studytimer.extra.ALARM_SOUND_TYPE"
         const val EXTRA_EYE_REST_SOUND_TYPE = "com.oymyisme.studytimer.extra.EYE_REST_SOUND_TYPE"
+        const val EXTRA_TEST_MODE = "com.oymyisme.studytimer.extra.TEST_MODE"
+        
+        // 测试模式的常量
+        private const val TEST_ALARM_INTERVAL_MS = 20 * 1000L // 20秒
+        private const val TEST_BREAK_TIME_MS = 20 * 1000L // 20秒
     }
     
     // Timer state
@@ -93,22 +98,45 @@ class StudyTimerService : Service() {
     
     // Calculated time values in milliseconds
     private val studyTimeMs: Long
-        get() = studyDurationMin * 60 * 1000L
+        get() = if (testMode) {
+            // 测试模式下使用 1 分钟
+            TestMode.TEST_STUDY_DURATION_MIN * 60 * 1000L
+        } else {
+            studyDurationMin * 60 * 1000L
+        }
     
     private val breakTimeMs: Long
-        get() = breakDurationMin * 60 * 1000L
+        get() = if (testMode) {
+            // 测试模式下使用 20 秒
+            TEST_BREAK_TIME_MS
+        } else {
+            breakDurationMin * 60 * 1000L
+        }
     
     private val minAlarmIntervalMs: Long
-        get() = minAlarmIntervalMin * 60 * 1000L
+        get() = if (testMode) {
+            // 测试模式下使用 20 秒
+            TEST_ALARM_INTERVAL_MS
+        } else {
+            minAlarmIntervalMin * 60 * 1000L
+        }
     
     private val maxAlarmIntervalMs: Long
-        get() = maxAlarmIntervalMin * 60 * 1000L
+        get() = if (testMode) {
+            // 测试模式下使用 20 秒
+            TEST_ALARM_INTERVAL_MS
+        } else {
+            maxAlarmIntervalMin * 60 * 1000L
+        }
     
     private var showNextAlarmTimeInNotification: Boolean = false // Default value
     
     // 提示音类型
     private var alarmSoundType: String = SoundOptions.DEFAULT_ALARM_SOUND_TYPE
     private var eyeRestSoundType: String = SoundOptions.DEFAULT_EYE_REST_SOUND_TYPE
+    
+    // 测试模式
+    private var testMode: Boolean = false
     
     inner class LocalBinder : Binder() {
         fun getService(): StudyTimerService = this@StudyTimerService
@@ -141,6 +169,7 @@ class StudyTimerService : Service() {
                     breakDurationMin = it.getIntExtra(EXTRA_BREAK_DURATION_MIN, calculateDefaultBreak(studyDurationMin)) // Read break duration
                     alarmSoundType = it.getStringExtra(EXTRA_ALARM_SOUND_TYPE) ?: SoundOptions.DEFAULT_ALARM_SOUND_TYPE
                     eyeRestSoundType = it.getStringExtra(EXTRA_EYE_REST_SOUND_TYPE) ?: SoundOptions.DEFAULT_EYE_REST_SOUND_TYPE
+                    testMode = it.getBooleanExtra(EXTRA_TEST_MODE, false) // 获取测试模式状态
 
                     // Ensure min alarm interval is less than max
                     if (minAlarmIntervalMin >= maxAlarmIntervalMin) {

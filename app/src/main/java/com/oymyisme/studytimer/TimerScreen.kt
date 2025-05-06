@@ -9,6 +9,11 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -34,9 +39,11 @@ fun StudyTimerApp(
     minAlarmIntervalMin: Int,
     maxAlarmIntervalMin: Int,
     breakDurationMin: Int,
+    testModeEnabled: Boolean = false,
     onStartClick: () -> Unit,
     onStopClick: () -> Unit,
-    onSettingsClick: () -> Unit
+    onSettingsClick: () -> Unit,
+    onTestModeToggle: (Boolean) -> Unit = {}
 ) {
     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
         Surface(
@@ -166,6 +173,65 @@ fun StudyTimerApp(
                         }
                     }
                     Spacer(modifier = Modifier.height(16.dp)) // Add some space after the button
+                    
+                    // 测试模式开关 - 只在调试版本中显示
+                    if (TestMode.isEnabled) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 32.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (testModeEnabled) 
+                                    MaterialTheme.colorScheme.tertiaryContainer 
+                                else 
+                                    MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp, horizontal = 16.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text(
+                                        text = "测试模式",
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                    Text(
+                                        text = "学习：1分钟 闹钟：20秒",
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                // 使用 remember 记录当前开关状态，并从外部状态更新
+                                var switchState by remember { mutableStateOf(testModeEnabled) }
+                                // 当外部状态变化时更新开关状态
+                                LaunchedEffect(testModeEnabled) {
+                                    switchState = testModeEnabled
+                                }
+                                
+                                Switch(
+                                    checked = switchState,
+                                    onCheckedChange = { newState ->
+                                        // 先更新本地状态，然后通知外部
+                                        switchState = newState
+                                        onTestModeToggle(newState)
+                                    },
+                                    colors = SwitchDefaults.colors(
+                                        checkedThumbColor = MaterialTheme.colorScheme.primary,
+                                        checkedTrackColor = MaterialTheme.colorScheme.primaryContainer,
+                                        uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                                        uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                                    )
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
                 }
                 
                 // Control buttons
@@ -254,9 +320,11 @@ fun TimerScreenPreviewIdle() {
             minAlarmIntervalMin = 3,
             maxAlarmIntervalMin = 5,
             breakDurationMin = 20,
+            testModeEnabled = false,
             onStartClick = {}, 
             onStopClick = {}, 
-            onSettingsClick = {}
+            onSettingsClick = {},
+            onTestModeToggle = {}
         )
     }
 }
@@ -267,16 +335,18 @@ fun TimerScreenPreviewStudying() {
     StudyTimerTheme {
         StudyTimerApp(
             timerState = StudyTimerService.TimerState.STUDYING,
-            timeLeftInSession = 45 * 60 * 1000L, 
+            timeLeftInSession = 85 * 60 * 1000L,
             timeUntilNextAlarm = 2 * 60 * 1000L,
             showNextAlarmTime = true,
-            studyDurationMin = 60, 
-            minAlarmIntervalMin = 4, 
-            maxAlarmIntervalMin = 6, 
-            breakDurationMin = 13, 
+            studyDurationMin = 90,
+            minAlarmIntervalMin = 3,
+            maxAlarmIntervalMin = 5,
+            breakDurationMin = 20,
+            testModeEnabled = false,
             onStartClick = {}, 
             onStopClick = {}, 
-            onSettingsClick = {}
+            onSettingsClick = {},
+            onTestModeToggle = {}
         )
     }
 }

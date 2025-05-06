@@ -19,12 +19,18 @@ android {
     }
 
     buildTypes {
+        debug {
+            // 在调试版本中启用测试功能
+            buildConfigField("boolean", "ENABLE_TEST_MODE", "true")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // 在发布版本中禁用测试功能
+            buildConfigField("boolean", "ENABLE_TEST_MODE", "false")
         }
     }
     compileOptions {
@@ -36,6 +42,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
