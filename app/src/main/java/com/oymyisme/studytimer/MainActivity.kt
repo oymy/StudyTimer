@@ -84,6 +84,8 @@ class MainActivity : ComponentActivity() {
         _minAlarmIntervalMin.value = prefs.getInt(KEY_MIN_ALARM, 3)
         _maxAlarmIntervalMin.value = prefs.getInt(KEY_MAX_ALARM, 5)
         _showNextAlarmTime.value = prefs.getBoolean(KEY_SHOW_NEXT_ALARM, false)
+        _alarmSoundType.value = prefs.getString(KEY_ALARM_SOUND, SoundOptions.DEFAULT_ALARM_SOUND_TYPE) ?: SoundOptions.DEFAULT_ALARM_SOUND_TYPE
+        _eyeRestSoundType.value = prefs.getString(KEY_EYE_REST_SOUND, SoundOptions.DEFAULT_EYE_REST_SOUND_TYPE) ?: SoundOptions.DEFAULT_EYE_REST_SOUND_TYPE
         
         setContent {
             StudyTimerTheme {
@@ -96,6 +98,8 @@ class MainActivity : ComponentActivity() {
                         minAlarmIntervalFlow = _minAlarmIntervalMin,
                         maxAlarmIntervalFlow = _maxAlarmIntervalMin,
                         showNextAlarmTimeFlow = _showNextAlarmTime,
+                        alarmSoundTypeFlow = _alarmSoundType,
+                        eyeRestSoundTypeFlow = _eyeRestSoundType,
                         onStudyDurationChange = { newDuration ->
                             // Validate: Study duration >= min/max intervals
                             val minInterval = _minAlarmIntervalMin.value
@@ -122,6 +126,12 @@ class MainActivity : ComponentActivity() {
                         },
                         onShowNextAlarmTimeChange = { show ->
                             _showNextAlarmTime.value = show
+                        },
+                        onAlarmSoundTypeChange = { soundType ->
+                            _alarmSoundType.value = soundType
+                        },
+                        onEyeRestSoundTypeChange = { soundType ->
+                            _eyeRestSoundType.value = soundType
                         },
                         onNavigateBack = { _showSettings.value = false }
                     )
@@ -220,6 +230,8 @@ class MainActivity : ComponentActivity() {
     private val _minAlarmIntervalMin = MutableStateFlow(3) // Default 3 minutes
     private val _maxAlarmIntervalMin = MutableStateFlow(5) // Default 5 minutes
     private val _showNextAlarmTime = MutableStateFlow(false) // Default to false
+    private val _alarmSoundType = MutableStateFlow(SoundOptions.DEFAULT_ALARM_SOUND_TYPE) // 默认闹钟提示音
+    private val _eyeRestSoundType = MutableStateFlow(SoundOptions.DEFAULT_EYE_REST_SOUND_TYPE) // 默认休息结束提示音
     
     // Navigation state flow
     private val _showSettings = MutableStateFlow(false)
@@ -228,6 +240,8 @@ class MainActivity : ComponentActivity() {
     private val uiTimeLeftInSession: StateFlow<Long> = _uiTimeLeftInSession
     private val uiTimeUntilNextAlarm: StateFlow<Long> = _uiTimeUntilNextAlarm
     private val showNextAlarmTime: StateFlow<Boolean> = _showNextAlarmTime
+    private val alarmSoundType: StateFlow<String> = _alarmSoundType
+    private val eyeRestSoundType: StateFlow<String> = _eyeRestSoundType
     
     // Function to calculate break duration based on study duration
     private fun calculateBreakDuration(studyDuration: Int): Int {
@@ -244,7 +258,9 @@ class MainActivity : ComponentActivity() {
             putExtra(StudyTimerService.EXTRA_BREAK_DURATION_MIN, breakDuration) // Pass break duration to service
             putExtra(StudyTimerService.EXTRA_MIN_ALARM_INTERVAL_MIN, _minAlarmIntervalMin.value)
             putExtra(StudyTimerService.EXTRA_MAX_ALARM_INTERVAL_MIN, _maxAlarmIntervalMin.value)
-            putExtra(StudyTimerService.EXTRA_SHOW_NEXT_ALARM_TIME, _showNextAlarmTime.value) 
+            putExtra(StudyTimerService.EXTRA_SHOW_NEXT_ALARM_TIME, _showNextAlarmTime.value)
+            putExtra(StudyTimerService.EXTRA_ALARM_SOUND_TYPE, _alarmSoundType.value)
+            putExtra(StudyTimerService.EXTRA_EYE_REST_SOUND_TYPE, _eyeRestSoundType.value)
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(intent)
@@ -287,6 +303,8 @@ class MainActivity : ComponentActivity() {
                 .putInt(KEY_MIN_ALARM, _minAlarmIntervalMin.value)
                 .putInt(KEY_MAX_ALARM, _maxAlarmIntervalMin.value)
                 .putBoolean(KEY_SHOW_NEXT_ALARM, _showNextAlarmTime.value)
+                .putString(KEY_ALARM_SOUND, _alarmSoundType.value)
+                .putString(KEY_EYE_REST_SOUND, _eyeRestSoundType.value)
         }
         
         // Unbind from the service
@@ -303,5 +321,7 @@ class MainActivity : ComponentActivity() {
         private const val KEY_MIN_ALARM = "minAlarmInterval"
         private const val KEY_MAX_ALARM = "maxAlarmInterval"
         private const val KEY_SHOW_NEXT_ALARM = "showNextAlarmTime"
+        private const val KEY_ALARM_SOUND = "alarmSoundType"
+        private const val KEY_EYE_REST_SOUND = "eyeRestSoundType"
     }
 }

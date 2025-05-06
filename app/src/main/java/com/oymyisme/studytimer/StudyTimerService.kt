@@ -52,6 +52,8 @@ class StudyTimerService : Service() {
         const val EXTRA_MAX_ALARM_INTERVAL_MIN = "com.oymyisme.studytimer.extra.MAX_ALARM_INTERVAL_MIN"
         const val EXTRA_SHOW_NEXT_ALARM_TIME = "com.oymyisme.studytimer.extra.SHOW_NEXT_ALARM_TIME"
         const val EXTRA_BREAK_DURATION_MIN = "com.oymyisme.studytimer.extra.BREAK_DURATION_MIN"
+        const val EXTRA_ALARM_SOUND_TYPE = "com.oymyisme.studytimer.extra.ALARM_SOUND_TYPE"
+        const val EXTRA_EYE_REST_SOUND_TYPE = "com.oymyisme.studytimer.extra.EYE_REST_SOUND_TYPE"
     }
     
     // Timer state
@@ -104,6 +106,10 @@ class StudyTimerService : Service() {
     
     private var showNextAlarmTimeInNotification: Boolean = false // Default value
     
+    // 提示音类型
+    private var alarmSoundType: String = SoundOptions.DEFAULT_ALARM_SOUND_TYPE
+    private var eyeRestSoundType: String = SoundOptions.DEFAULT_EYE_REST_SOUND_TYPE
+    
     inner class LocalBinder : Binder() {
         fun getService(): StudyTimerService = this@StudyTimerService
     }
@@ -133,6 +139,8 @@ class StudyTimerService : Service() {
                     maxAlarmIntervalMin = it.getIntExtra(EXTRA_MAX_ALARM_INTERVAL_MIN, DEFAULT_MAX_ALARM_INTERVAL_MIN)
                     showNextAlarmTimeInNotification = it.getBooleanExtra(EXTRA_SHOW_NEXT_ALARM_TIME, false) 
                     breakDurationMin = it.getIntExtra(EXTRA_BREAK_DURATION_MIN, calculateDefaultBreak(studyDurationMin)) // Read break duration
+                    alarmSoundType = it.getStringExtra(EXTRA_ALARM_SOUND_TYPE) ?: SoundOptions.DEFAULT_ALARM_SOUND_TYPE
+                    eyeRestSoundType = it.getStringExtra(EXTRA_EYE_REST_SOUND_TYPE) ?: SoundOptions.DEFAULT_EYE_REST_SOUND_TYPE
 
                     // Ensure min alarm interval is less than max
                     if (minAlarmIntervalMin >= maxAlarmIntervalMin) {
@@ -316,18 +324,19 @@ class StudyTimerService : Service() {
     
     private fun playAlarmSound() {
         try {
-            val alarmSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+            // 使用用户选择的闹钟提示音
+            val soundUri = SoundOptions.getSoundUriById(this, alarmSoundType)
             MediaPlayer().apply {
-                setDataSource(this@StudyTimerService, alarmSound)
+                setDataSource(this@StudyTimerService, soundUri)
                 setAudioAttributes(
                     AudioAttributes.Builder()
                         .setUsage(AudioAttributes.USAGE_ALARM)
                         .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                         .build()
                 )
-                setOnCompletionListener { it.release() }
                 prepare()
                 start()
+                setOnCompletionListener { release() }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error playing alarm sound", e)
@@ -356,8 +365,8 @@ class StudyTimerService : Service() {
     
     private fun playEyeRestCompleteSound() {
         try {
-            // Use a gentler sound for eye rest completion
-            val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+            // 使用用户选择的休息结束提示音
+            val soundUri = SoundOptions.getSoundUriById(this, eyeRestSoundType)
             MediaPlayer().apply {
                 setDataSource(this@StudyTimerService, soundUri)
                 setAudioAttributes(
@@ -366,9 +375,9 @@ class StudyTimerService : Service() {
                         .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                         .build()
                 )
-                setOnCompletionListener { it.release() }
                 prepare()
                 start()
+                setOnCompletionListener { release() }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error playing eye rest complete sound", e)
