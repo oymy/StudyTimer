@@ -6,7 +6,9 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.media.AudioAttributes
+import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.RingtoneManager
@@ -337,6 +339,9 @@ class StudyTimerService : Service() {
         _timerState.value = TimerState.BREAK
         _timeLeftInSession.value = TimeUnit.MINUTES.toMillis(breakDurationMin.toLong()) // Use stored break duration
         
+        // 播放休息开始提示音
+        playBreakSound()
+        
         sessionTimer?.cancel()
         sessionTimer = object : CountDownTimer(_timeLeftInSession.value, 1000) {
             override fun onTick(millisUntilFinished: Long) {
@@ -345,11 +350,46 @@ class StudyTimerService : Service() {
             }
             
             override fun onFinish() {
+                // 休息结束时播放提示音
+                playEyeRestCompleteSound()
+                
                 // Start a new study session
                 startStudySession()
             }
         }.start()
         updateNotification()
+    }
+    
+    /**
+     * 检测耳机是否连接
+     */
+    private fun isHeadsetConnected(): Boolean {
+        val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        
+        // 检查有线耳机
+        if (audioManager.isWiredHeadsetOn) {
+            return true
+        }
+        
+        // 检查蓝牙耳机 (传统方法)
+        if (audioManager.isBluetoothA2dpOn || audioManager.isBluetoothScoOn) {
+            return true
+        }
+        
+        // 现代API检查音频设备 (Android M及以上)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val devices = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+            for (device in devices) {
+                if (device.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
+                    device.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
+                    device.type == AudioDeviceInfo.TYPE_WIRED_HEADSET ||
+                    device.type == AudioDeviceInfo.TYPE_WIRED_HEADPHONES) {
+                    return true
+                }
+            }
+        }
+        
+        return false
     }
     
     private fun playAlarmSound() {
@@ -361,7 +401,7 @@ class StudyTimerService : Service() {
                 
                 // 检测耳机连接状态
                 val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-                val isHeadsetConnected = audioManager.isWiredHeadsetOn || audioManager.isBluetoothA2dpOn
+                val isHeadsetConnected = isHeadsetConnected()
                 
                 // 设置音频属性
                 setAudioAttributes(
@@ -373,8 +413,22 @@ class StudyTimerService : Service() {
                 
                 // 如果耳机连接，将音频输出设置为耳机
                 if (isHeadsetConnected) {
-                    audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+                    // 关闭扬声器
                     audioManager.isSpeakerphoneOn = false
+                    
+                    // 设置音频路由到蓝牙SCO（如果可用）
+                    if (audioManager.isBluetoothScoAvailableOffCall) {
+                        try {
+                            audioManager.startBluetoothSco()
+                            audioManager.isBluetoothScoOn = true
+                            audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to start Bluetooth SCO", e)
+                        }
+                    } else {
+                        // 回退到普通模式
+                        audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+                    }
                 }
                 
                 prepare()
@@ -385,6 +439,15 @@ class StudyTimerService : Service() {
                     
                     // 恢复音频模式
                     if (isHeadsetConnected) {
+                        // 停止蓝牙SCO
+                        if (audioManager.isBluetoothScoOn) {
+                            try {
+                                audioManager.stopBluetoothSco()
+                                audioManager.isBluetoothScoOn = false
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Failed to stop Bluetooth SCO", e)
+                            }
+                        }
                         audioManager.mode = AudioManager.MODE_NORMAL
                     }
                 }
@@ -402,7 +465,7 @@ class StudyTimerService : Service() {
                 
                 // 检测耳机连接状态
                 val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-                val isHeadsetConnected = audioManager.isWiredHeadsetOn || audioManager.isBluetoothA2dpOn
+                val isHeadsetConnected = isHeadsetConnected()
                 
                 setAudioAttributes(
                     AudioAttributes.Builder()
@@ -413,8 +476,22 @@ class StudyTimerService : Service() {
                 
                 // 如果耳机连接，将音频输出设置为耳机
                 if (isHeadsetConnected) {
-                    audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+                    // 关闭扬声器
                     audioManager.isSpeakerphoneOn = false
+                    
+                    // 设置音频路由到蓝牙SCO（如果可用）
+                    if (audioManager.isBluetoothScoAvailableOffCall) {
+                        try {
+                            audioManager.startBluetoothSco()
+                            audioManager.isBluetoothScoOn = true
+                            audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to start Bluetooth SCO", e)
+                        }
+                    } else {
+                        // 回退到普通模式
+                        audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+                    }
                 }
                 
                 prepare()
@@ -425,6 +502,15 @@ class StudyTimerService : Service() {
                     
                     // 恢复音频模式
                     if (isHeadsetConnected) {
+                        // 停止蓝牙SCO
+                        if (audioManager.isBluetoothScoOn) {
+                            try {
+                                audioManager.stopBluetoothSco()
+                                audioManager.isBluetoothScoOn = false
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Failed to stop Bluetooth SCO", e)
+                            }
+                        }
                         audioManager.mode = AudioManager.MODE_NORMAL
                     }
                 }
@@ -443,7 +529,7 @@ class StudyTimerService : Service() {
                 
                 // 检测耳机连接状态
                 val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-                val isHeadsetConnected = audioManager.isWiredHeadsetOn || audioManager.isBluetoothA2dpOn
+                val isHeadsetConnected = isHeadsetConnected()
                 
                 setAudioAttributes(
                     AudioAttributes.Builder()
@@ -454,8 +540,22 @@ class StudyTimerService : Service() {
                 
                 // 如果耳机连接，将音频输出设置为耳机
                 if (isHeadsetConnected) {
-                    audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+                    // 关闭扬声器
                     audioManager.isSpeakerphoneOn = false
+                    
+                    // 设置音频路由到蓝牙SCO（如果可用）
+                    if (audioManager.isBluetoothScoAvailableOffCall) {
+                        try {
+                            audioManager.startBluetoothSco()
+                            audioManager.isBluetoothScoOn = true
+                            audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to start Bluetooth SCO", e)
+                        }
+                    } else {
+                        // 回退到普通模式
+                        audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+                    }
                 }
                 
                 prepare()
@@ -466,6 +566,15 @@ class StudyTimerService : Service() {
                     
                     // 恢复音频模式
                     if (isHeadsetConnected) {
+                        // 停止蓝牙SCO
+                        if (audioManager.isBluetoothScoOn) {
+                            try {
+                                audioManager.stopBluetoothSco()
+                                audioManager.isBluetoothScoOn = false
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Failed to stop Bluetooth SCO", e)
+                            }
+                        }
                         audioManager.mode = AudioManager.MODE_NORMAL
                     }
                 }
