@@ -441,13 +441,10 @@ class StudyTimerService : Service() {
     
     private fun startEyeRestTimer() {
         
-        // 保存当前状态，以便眼部休息结束后恢复
+        // 保存当前状态，以便在眼部休息结束后恢复
         _previousTimerStateBeforeEyeRest = _timerState.value
         _timeLeftBeforeEyeRest = _timeLeftInSession.value
         _timeUntilNextAlarmBeforeEyeRest = _timeUntilNextAlarm.value
-        
-        // 不取消主计时器，让它在后台继续运行
-        // 只暂存引用，不取消它们
         _studyTimerBeforeEyeRest = sessionTimer
         _alarmTimerBeforeEyeRest = alarmTimer
         
@@ -456,7 +453,7 @@ class StudyTimerService : Service() {
         _timeLeftInSession.value = EYE_REST_TIME_MS // 设置眼部休息倒计时
         
         // 眼部休息期间，_elapsedTimeInFullCycleMillis 会通过主计时器继续更新
-        Log.d(TAG, "Starting eye rest. Full cycle progress: ${_elapsedTimeInFullCycleMillis.value}. Study time left: ${_timeLeftBeforeEyeRest}")
+        Log.d(TAG, "Starting eye rest. Full cycle progress: ${_elapsedTimeInFullCycleMillis.value}. Study time left: ${_timeLeftBeforeEyeRest}. Alarm time left: ${_timeUntilNextAlarmBeforeEyeRest}")
 
         
         updateNotification(getString(R.string.notification_eye_rest_start))
@@ -472,6 +469,10 @@ class StudyTimerService : Service() {
                 // 主计时器在后台继续运行，所以不需要在这里更新 _elapsedTimeInFullCycleMillis
                 updateNotification(getString(R.string.notification_eye_rest_ongoing, formatTime(millisUntilFinished)))
             
+                // 每3秒记录一次眼部休息状态
+                if (millisUntilFinished % 3000 < 1000) {
+                    Log.d(TAG, "Eye rest ongoing: ${formatTime(millisUntilFinished)} remaining")
+                }
             }
             
             
@@ -575,21 +576,40 @@ class StudyTimerService : Service() {
         
         _timeUntilNextAlarm.value = interval
         
+        // 记录闹钟计划信息
+        val minutes = interval / (60 * 1000)
+        val seconds = (interval % (60 * 1000)) / 1000
+        Log.d(TAG, "Scheduling next alarm in $minutes min $seconds sec (${interval}ms). Min: ${minMs}ms, Max: ${maxMs}ms")
+        
         alarmTimer = object : CountDownTimer(interval, 1000) {
             override fun onTick(millisUntilFinished: Long) {
                 _timeUntilNextAlarm.value = millisUntilFinished
+                
+                // 每30秒记录一次闹钟剩余时间
+                if (millisUntilFinished % 30000 < 1000) {
+                    val remainingMin = millisUntilFinished / (60 * 1000)
+                    val remainingSec = (millisUntilFinished % (60 * 1000)) / 1000
+                    Log.d(TAG, "Alarm countdown: $remainingMin min $remainingSec sec remaining. Current state: ${_timerState.value}")
+                }
+                
                 updateNotification()
             }
             
             override fun onFinish() {
+                Log.d(TAG, "Alarm timer finished. Current state: ${_timerState.value}")
                 if (_timerState.value == TimerState.STUDYING) {
+                    Log.d(TAG, "Triggering eye rest alarm")
                     triggerAlarm()
+                } else {
+                    Log.d(TAG, "Not triggering alarm because state is not STUDYING")
                 }
             }
         }.start()
     }
     
     private fun triggerAlarm() {
+        Log.d(TAG, "Triggering alarm for eye rest")
+        
         // Play alarm sound
         playAlarmSound()
         
@@ -598,6 +618,14 @@ class StudyTimerService : Service() {
         
         // Start eye rest timer
         startEyeRestTimer()
+        
+        // 在触发闹钟后立即计划下一次闹钟，确保循环继续
+        Handler(Looper.getMainLooper()).postDelayed({
+            if (_timerState.value == TimerState.STUDYING) {
+                Log.d(TAG, "Scheduling next alarm after eye rest")
+                scheduleNextAlarm()
+            }
+        }, EYE_REST_TIME_MS + 1000) // 等待眼部休息结束后再计划下一次闹钟
     }
     
     private fun startEyeRest() {
