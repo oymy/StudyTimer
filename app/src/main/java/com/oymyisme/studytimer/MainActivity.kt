@@ -177,6 +177,19 @@ class MainActivity : ComponentActivity() {
                         onTestModeToggle = { enabled ->
                             // 更新测试模式状态
                             _testModeEnabled.value = enabled
+                            
+                            // 直接通知服务更新测试模式状态，但不开始新的学习周期
+                            if (studyTimerService != null) {
+                                // 直接更新服务中的测试模式状态
+                                studyTimerService?.updateTestMode(enabled, _studyDurationMin.value)
+                                
+                                // 如果当前是 IDLE 状态，强制更新 UI 显示
+                                if (uiTimerState.value == StudyTimerService.TimerState.IDLE) {
+                                    // 强制更新 UI 显示
+                                    uiTimeLeftInSession.value = studyTimerService?.timeLeftInSession?.value ?: 0L
+                                }
+                            }
+                            
                             // 立即显示更新结果
                             Toast.makeText(
                                 this@MainActivity,

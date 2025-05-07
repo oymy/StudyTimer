@@ -326,6 +326,23 @@ class StudyTimerService : Service() {
         Log.d(TAG, "Cycle completed state reset")
     }
     
+    /**
+     * 更新测试模式状态
+     * 此方法允许在不开始新的学习周期的情况下更新测试模式状态
+     * @param enabled 是否启用测试模式
+     * @param studyDurationMinutes 学习时长（分钟）
+     */
+    fun updateTestMode(enabled: Boolean, studyDurationMinutes: Int) {
+        testMode = enabled
+        studyDurationMin = studyDurationMinutes
+        breakDurationMin = calculateDefaultBreak(studyDurationMinutes)
+        
+        // 更新内部时长计算
+        updateCurrentDurationsInternal()
+        
+        Log.d(TAG, "Test mode updated: $enabled, Study duration: $studyDurationMinutes min, Break duration: $breakDurationMin min")
+    }
+    
     private fun startNextSessionPhase(isStudySession: Boolean) {
         // 开始新周期时重置周期完成状态
         _cycleCompleted.value = false
@@ -521,6 +538,13 @@ class StudyTimerService : Service() {
         mBreakDurationMillis = breakTimeMs
         mTotalCycleDurationMillis = mStudyDurationMillis + mBreakDurationMillis
         Log.d(TAG, "Updated internal durations: Study=${mStudyDurationMillis}ms (${studyDurationMin}min), Break=${mBreakDurationMillis}ms (${breakDurationMin}min), Total=${mTotalCycleDurationMillis}ms. TestMode=$testMode")
+        
+        // 如果当前是 IDLE 状态，更新剩余时间和周期时间显示
+        if (_timerState.value == TimerState.IDLE) {
+            _timeLeftInSession.value = mStudyDurationMillis // 显示潜在的学习时间
+            _elapsedTimeInFullCycleMillis.value = mTotalCycleDurationMillis // 显示完整进度
+            Log.d(TAG, "Updated IDLE state time display: timeLeft=${_timeLeftInSession.value}ms, elapsedTime=${_elapsedTimeInFullCycleMillis.value}ms")
+        }
     }
  
     private fun scheduleNextAlarm() {

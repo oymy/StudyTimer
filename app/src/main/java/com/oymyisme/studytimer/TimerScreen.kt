@@ -167,8 +167,15 @@ fun StudyTimerApp(
                         StudyTimerService.TimerState.EYE_REST ->
                             "Close your eyes and relax for 10 seconds."
 
-                        StudyTimerService.TimerState.IDLE ->
-                            "${studyDurationMin}min study + ${breakDurationMin}min break cycles with eye rest alarms every ${minAlarmIntervalMin}-${maxAlarmIntervalMin}min."
+                        StudyTimerService.TimerState.IDLE -> {
+                            if (testModeEnabled) {
+                                // 测试模式下显示测试时间
+                                "Test mode: ${TestMode.getStudyDurationMin()}s study + ${TestMode.getBreakDurationMin()}s break cycles with eye rest alarms every ${TestMode.getMinAlarmIntervalMin()}-${TestMode.getMaxAlarmIntervalMin()}s."
+                            } else {
+                                // 非测试模式下显示实际设置的学习周期
+                                "${studyDurationMin}min study + ${breakDurationMin}min break cycles with eye rest alarms every ${minAlarmIntervalMin}-${maxAlarmIntervalMin}min."
+                            }
+                        }
                     },
                     fontSize = 14.sp,
                     textAlign = TextAlign.Center,

@@ -25,7 +25,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.ui.text.style.TextOverflow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -134,9 +134,9 @@ fun SettingsCard(
             // Study Duration Setting
             SettingItem(
                 title = "Study Duration",
-                value = "$studyDurationMin min",
+                value = formatStudyDurationWithBreak(studyDurationMin),
                 options = listOf(30, 45, 60, 75, 90, 105, 120),
-                formatOption = { "$it min" },
+                formatOption = { formatStudyDurationWithBreak(it) },
                 onOptionSelected = onStudyDurationChange
             )
             
@@ -265,7 +265,7 @@ fun <T> SettingItem(
                 ),
                 shape = RoundedCornerShape(8.dp),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                modifier = Modifier.width(120.dp) // Increased width slightly
+                modifier = Modifier.width(200.dp) // 增加宽度以适应更长的文本
             ) {
                 Text(text = value)
             }
@@ -273,7 +273,7 @@ fun <T> SettingItem(
             DropdownMenu(
                 expanded = expanded,
                 onDismissRequest = { expanded = false },
-                modifier = Modifier.width(120.dp) // Match button width
+                modifier = Modifier.width(200.dp) // 与按钮宽度保持一致
             ) {
                 options.forEach { option ->
                     DropdownMenuItem(
@@ -350,6 +350,27 @@ fun SoundSettingItem(
             }
         }
     }
+}
+
+/**
+ * 格式化学习时长和休息时长
+ * @param studyDuration 学习时长（分钟）
+ * @return 格式化后的字符串，包含学习时长和休息时长
+ */
+private fun formatStudyDurationWithBreak(studyDuration: Int): String {
+    // 使用与 MainActivity 相同的计算方法
+    val breakDuration = calculateBreakDuration(studyDuration)
+    return "study ${studyDuration}min + break ${breakDuration}min"
+}
+
+/**
+ * 计算休息时长
+ * @param studyDuration 学习时长（分钟）
+ * @return 休息时长（分钟）
+ */
+private fun calculateBreakDuration(studyDuration: Int): Int {
+    val calculated = (studyDuration * (20.0 / 90.0)).roundToInt()
+    return maxOf(5, calculated) // 确保最少 5 分钟休息
 }
 
 @Preview(showBackground = true)
