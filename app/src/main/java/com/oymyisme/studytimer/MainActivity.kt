@@ -19,6 +19,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import com.oymyisme.studytimer.timer.TimerManager
 import com.oymyisme.studytimer.ui.theme.StudyTimerTheme
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,6 +27,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 import androidx.core.content.edit
+import androidx.compose.runtime.State
 
 class MainActivity : ComponentActivity() {
     private var studyTimerService: StudyTimerService? = null
@@ -138,13 +140,13 @@ class MainActivity : ComponentActivity() {
                 } else {
                     // Collect state from service if bound, otherwise use local UI state
                     val serviceTimerState = studyTimerService?.timerState?.collectAsState()
-                    val serviceTimeLeftInSession = studyTimerService?.timeLeftInSession?.collectAsState()
-                    val serviceTimeUntilNextAlarm = studyTimerService?.timeUntilNextAlarm?.collectAsState()
-                    val serviceElapsedTimeInFullCycle = studyTimerService?.elapsedTimeInFullCycleMillis?.collectAsState()
+                    val serviceTimeLeftInSession: State<Long>? = studyTimerService?.timeLeftInSession?.collectAsState(0L)
+                    val serviceTimeUntilNextAlarm: State<Long>? = studyTimerService?.timeUntilNextAlarm?.collectAsState(0L)
+                    val serviceElapsedTimeInFullCycle: State<Long>? = studyTimerService?.elapsedTimeInFullCycleMillis?.collectAsState(0L)
                     
-                    val uiTimerStateState = uiTimerState.collectAsState()
-                    val uiTimeLeftInSessionState = uiTimeLeftInSession.collectAsState()
-                    val uiTimeUntilNextAlarmState = uiTimeUntilNextAlarm.collectAsState()
+                    val uiTimerStateState = uiTimerState.collectAsState(TimerManager.TimerState.IDLE)
+                    val uiTimeLeftInSessionState = uiTimeLeftInSession.collectAsState(0L)
+                    val uiTimeUntilNextAlarmState = uiTimeUntilNextAlarm.collectAsState(0L)
                     
                     // Use service state if available, otherwise use UI state
                     val timerState = serviceTimerState?.value ?: uiTimerStateState.value
@@ -184,7 +186,7 @@ class MainActivity : ComponentActivity() {
                                 studyTimerService?.updateTestMode(enabled, _studyDurationMin.value)
                                 
                                 // 如果当前是 IDLE 状态，强制更新 UI 显示
-                                if (uiTimerState.value == StudyTimerService.TimerState.IDLE) {
+                                if (uiTimerState.value == TimerManager.TimerState.IDLE) {
                                     // 强制更新 UI 显示
                                     uiTimeLeftInSession.value = studyTimerService?.timeLeftInSession?.value ?: 0L
                                 }
@@ -261,7 +263,7 @@ class MainActivity : ComponentActivity() {
     }
     
     // State flows to maintain UI state when service is not bound
-    private val _uiTimerState = MutableStateFlow(StudyTimerService.TimerState.IDLE)
+    private val _uiTimerState = MutableStateFlow(TimerManager.TimerState.IDLE)
     private val _uiTimeLeftInSession = MutableStateFlow(0L)
     private val _uiTimeUntilNextAlarm = MutableStateFlow(0L)
     
@@ -282,7 +284,7 @@ class MainActivity : ComponentActivity() {
     // Navigation state flow
     private val _showSettings = MutableStateFlow(false)
     
-    private val uiTimerState: MutableStateFlow<StudyTimerService.TimerState> = _uiTimerState
+    private val uiTimerState: MutableStateFlow<TimerManager.TimerState> = _uiTimerState
     private val uiTimeLeftInSession: MutableStateFlow<Long> = _uiTimeLeftInSession
     private val uiTimeUntilNextAlarm: MutableStateFlow<Long> = _uiTimeUntilNextAlarm
     private val showNextAlarmTime: StateFlow<Boolean> = _showNextAlarmTime
@@ -325,7 +327,7 @@ class MainActivity : ComponentActivity() {
         }
         
         // Immediately update UI state
-        _uiTimerState.value = StudyTimerService.TimerState.STUDYING
+        _uiTimerState.value = TimerManager.TimerState.STUDYING
         _uiTimeLeftInSession.value = 90 * 60 * 1000L // Convert minutes to ms
         _uiTimeUntilNextAlarm.value = 3 * 60 * 1000L // Initial alarm time
     }
@@ -337,7 +339,7 @@ class MainActivity : ComponentActivity() {
         startService(intent)
         
         // Immediately update UI state
-        _uiTimerState.value = StudyTimerService.TimerState.IDLE
+        _uiTimerState.value = TimerManager.TimerState.IDLE
         _uiTimeLeftInSession.value = 0L
         _uiTimeUntilNextAlarm.value = 0L
     }

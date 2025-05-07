@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.res.stringResource
 import java.util.concurrent.TimeUnit
+import com.oymyisme.studytimer.timer.TimerManager
 import com.oymyisme.studytimer.ui.theme.StudyTimerTheme
 import java.util.Locale
 
@@ -38,7 +39,7 @@ import java.util.Locale
  */
 @Composable
 fun StudyTimerApp(
-    timerState: StudyTimerService.TimerState,
+    timerState: TimerManager.TimerState,
     timeLeftInSession: Long,
     timeUntilNextAlarm: Long,
     elapsedTimeInFullCycle: Long,
@@ -95,33 +96,29 @@ fun StudyTimerApp(
                 Box(contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(
                         progress = {
-                            // 计算总周期时长（学习+休息）
-                            val currentTotalCycleDurationMillis = when {
-                                testModeEnabled && TestMode.isEnabled -> {
-                                    // 测试模式下的总周期时长
-                                    val studyTimeMs = TestMode.TEST_STUDY_TIME_MS
-                                    val breakTimeMs = TestMode.TEST_BREAK_TIME_MS
-                                    studyTimeMs + breakTimeMs
-                                }
-                                else -> {
-                                    // 非测试模式下的总周期时长
-                                    studyDurationMin * 60 * 1000L + breakDurationMin * 60 * 1000L
-                                }
+                            val currentTotalCycleDurationMillis = if (testModeEnabled && TestMode.isEnabled) {
+                                // 测试模式下的总周期时长
+                                TestMode.TEST_STUDY_TIME_MS + TestMode.TEST_BREAK_TIME_MS
+                            }
+                            else {
+                                // 非测试模式下的总周期时长
+                                studyDurationMin * 60 * 1000L + breakDurationMin * 60 * 1000L
                             }
 
                             when (timerState) {
-                                StudyTimerService.TimerState.STUDYING,
-                                StudyTimerService.TimerState.BREAK,
-                                StudyTimerService.TimerState.EYE_REST -> { // 修改：在眼部休息期间也使用相同的进度计算
+                                TimerManager.TimerState.STUDYING,
+                                TimerManager.TimerState.BREAK,
+                                TimerManager.TimerState.EYE_REST -> {
+                                    // 修改：在眼部休息期间也使用相同的进度计算
                                     if (currentTotalCycleDurationMillis > 0) {
                                         (elapsedTimeInFullCycle.toFloat() / currentTotalCycleDurationMillis.toFloat()).coerceIn(0f, 1f)
                                     } else {
                                         1f // Avoid division by zero, show full if total is somehow zero
                                     }
                                 }
-                                StudyTimerService.TimerState.IDLE -> 0f // Empty circle when idle, consistent with reset progress
+                                TimerManager.TimerState.IDLE -> 0f // Empty circle when idle, consistent with reset progress
                             }
-                        },
+                        }(),
                         modifier = Modifier.size(300.dp), // 进一步增大圈圈进度条大小
                         color = MaterialTheme.colorScheme.primary,
                         strokeWidth = 20.dp, // 进一步增加描边宽度
@@ -139,16 +136,16 @@ fun StudyTimerApp(
                         
                         // 计算并显示总周期的倒计时
                         val totalCycleTimeLeft = when (timerState) {
-                            StudyTimerService.TimerState.IDLE -> totalCycleDurationMs
-                            StudyTimerService.TimerState.STUDYING -> {
+                            TimerManager.TimerState.IDLE -> totalCycleDurationMs
+                            TimerManager.TimerState.STUDYING -> {
                                 // 学习阶段，总周期倒计时 = 当前学习阶段剩余时间 + 休息时间
                                 timeLeftInSession + (if (testModeEnabled && TestMode.isEnabled) TestMode.TEST_BREAK_TIME_MS else breakDurationMin * 60 * 1000L)
                             }
-                            StudyTimerService.TimerState.BREAK -> {
+                            TimerManager.TimerState.BREAK -> {
                                 // 休息阶段，总周期倒计时 = 当前休息阶段剩余时间
                                 timeLeftInSession
                             }
-                            StudyTimerService.TimerState.EYE_REST -> {
+                            TimerManager.TimerState.EYE_REST -> {
                                 // 眼部休息阶段，总周期倒计时不受影响
                                 if (elapsedTimeInFullCycle < (if (testModeEnabled && TestMode.isEnabled) TestMode.TEST_STUDY_TIME_MS else studyDurationMin * 60 * 1000L)) {
                                     // 在学习阶段的眼部休息
@@ -170,11 +167,11 @@ fun StudyTimerApp(
                         Spacer(modifier = Modifier.height(8.dp))
                         
                         // 显示当前阶段倒计时
-                        if (timerState != StudyTimerService.TimerState.IDLE) {
+                        if (timerState != TimerManager.TimerState.IDLE) {
                             val timerTextRes = when (timerState) {
-                                StudyTimerService.TimerState.STUDYING -> R.string.timer_study
-                                StudyTimerService.TimerState.BREAK -> R.string.timer_break
-                                StudyTimerService.TimerState.EYE_REST -> R.string.timer_eye_rest
+                                TimerManager.TimerState.STUDYING -> R.string.timer_study
+                                TimerManager.TimerState.BREAK -> R.string.timer_break
+                                TimerManager.TimerState.EYE_REST -> R.string.timer_eye_rest
                                 else -> null
                             }
                             
@@ -189,7 +186,7 @@ fun StudyTimerApp(
                         }
 
                         // Conditionally show the next alarm time row
-                        if (timerState == StudyTimerService.TimerState.STUDYING && showNextAlarmTime) {
+                        if (timerState == TimerManager.TimerState.STUDYING && showNextAlarmTime) {
                             Spacer(modifier = Modifier.height(8.dp))
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -216,16 +213,16 @@ fun StudyTimerApp(
                 // Instructions
                 Text(
                     text = when (timerState) {
-                        StudyTimerService.TimerState.STUDYING ->
+                        TimerManager.TimerState.STUDYING ->
                             stringResource(R.string.state_studying, minAlarmIntervalMin, maxAlarmIntervalMin)
 
-                        StudyTimerService.TimerState.BREAK ->
+                        TimerManager.TimerState.BREAK ->
                             stringResource(R.string.state_break)
 
-                        StudyTimerService.TimerState.EYE_REST ->
+                        TimerManager.TimerState.EYE_REST ->
                             stringResource(R.string.state_eye_rest)
 
-                        StudyTimerService.TimerState.IDLE -> {
+                        TimerManager.TimerState.IDLE -> {
                             if (testModeEnabled && TestMode.isEnabled) {
                                 // 测试模式下显示测试时间
                                 stringResource(
@@ -256,7 +253,7 @@ fun StudyTimerApp(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // 测试模式开关 - 只在调试版本中显示
-                if (timerState == StudyTimerService.TimerState.IDLE && TestMode.isEnabled) {
+                if (timerState == TimerManager.TimerState.IDLE && TestMode.isEnabled) {
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -330,7 +327,7 @@ fun StudyTimerApp(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         // 当计时器空闲时显示 Settings 和 Start 按钮
-                        if (timerState == StudyTimerService.TimerState.IDLE) {
+                        if (timerState == TimerManager.TimerState.IDLE) {
                             // Settings Button
                             Button(
                                 onClick = onSettingsClick,
@@ -377,7 +374,7 @@ fun StudyTimerApp(
                         }
 
                         // Stop Button (visible when running)
-                        if (timerState != StudyTimerService.TimerState.IDLE) {
+                        if (timerState != TimerManager.TimerState.IDLE) {
                             Button(
                                 onClick = onStopClick,
                                 colors = ButtonDefaults.buttonColors(
@@ -422,7 +419,7 @@ fun formatTime(millis: Long): String {
 fun TimerScreenPreviewIdle() {
     StudyTimerTheme {
         StudyTimerApp(
-            timerState = StudyTimerService.TimerState.IDLE,
+            timerState = TimerManager.TimerState.IDLE,
             timeLeftInSession = 90 * 60 * 1000L,
             timeUntilNextAlarm = 0L,
             elapsedTimeInFullCycle = 110 * 60 * 1000L, // For IDLE, typically means full cycle completed or ready
@@ -448,7 +445,7 @@ fun TimerScreenPreviewIdle() {
 fun TimerScreenPreviewStudying() {
     StudyTimerTheme {
         StudyTimerApp(
-            timerState = StudyTimerService.TimerState.STUDYING,
+            timerState = TimerManager.TimerState.STUDYING,
             timeLeftInSession = 45 * 60 * 1000L, // Halfway through 90 min study
             timeUntilNextAlarm = 2 * 60 * 1000L,
             elapsedTimeInFullCycle = 45 * 60 * 1000L, // Halfway through study part of full cycle
@@ -474,7 +471,7 @@ fun TimerScreenPreviewStudying() {
 fun TimerScreenPreviewBreak() {
     StudyTimerTheme {
         StudyTimerApp(
-            timerState = StudyTimerService.TimerState.BREAK,
+            timerState = TimerManager.TimerState.BREAK,
             timeLeftInSession = 10 * 60 * 1000L, // Halfway through 20 min break
             timeUntilNextAlarm = 0L,
             elapsedTimeInFullCycle = (90 * 60 * 1000L) + (10 * 60 * 1000L), // Study done + halfway through break
@@ -500,7 +497,7 @@ fun TimerScreenPreviewBreak() {
 fun TimerScreenPreviewEyeRest() {
     StudyTimerTheme {
         StudyTimerApp(
-            timerState = StudyTimerService.TimerState.EYE_REST,
+            timerState = TimerManager.TimerState.EYE_REST,
             timeLeftInSession = 5 * 1000L, // Halfway through 10s eye rest
             timeUntilNextAlarm = 0L,
             elapsedTimeInFullCycle = 30 * 60 * 1000L, // Example: eye rest during a study session

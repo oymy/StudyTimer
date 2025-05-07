@@ -1,54 +1,35 @@
 package com.oymyisme.studytimer
 
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
-import android.media.AudioAttributes
-import android.media.AudioDeviceInfo
-import android.media.AudioManager
-import android.media.MediaPlayer
-import android.media.RingtoneManager
-import android.net.Uri
 import android.os.Binder
-import android.os.Build
-import android.os.CountDownTimer
-import android.os.Handler
 import android.os.IBinder
-import android.os.Looper
 import android.os.PowerManager
-import android.os.VibrationEffect
-import android.os.Vibrator
-import android.os.VibratorManager
 import android.util.Log
-import androidx.core.app.NotificationCompat
 import com.oymyisme.studytimer.BuildConfig
-import kotlinx.coroutines.flow.MutableStateFlow
+import com.oymyisme.studytimer.audio.AudioPlayerManager
+import com.oymyisme.studytimer.notification.NotificationHelper
+import com.oymyisme.studytimer.timer.TimerManager
+import com.oymyisme.studytimer.vibration.VibrationManager
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import java.util.Locale
-import java.util.Random
-import java.util.concurrent.TimeUnit
 import kotlin.math.roundToInt
 
+/**
+ * 学习计时器服务
+ *
+ * 负责协调计时器、音频、通知和振动管理器，提供前台服务功能
+ */
 class StudyTimerService : Service() {
     companion object {
         private const val TAG = "StudyTimerService"
         private const val NOTIFICATION_ID = 1
-        private const val CHANNEL_ID = "study_timer_channel"
         
         // Default timer constants
         private const val DEFAULT_STUDY_TIME_MIN = 90 // 90 minutes
         private const val DEFAULT_BREAK_TIME_MIN = 20 // Default break if not passed
-        const val EYE_REST_TIME_MS = TestMode.TEST_EYE_REST_TIME_MS // 使用 TestMode 类中定义的常量
         const val DEFAULT_MIN_ALARM_INTERVAL_MIN = 3
         const val DEFAULT_MAX_ALARM_INTERVAL_MIN = 5
-        
-        // Fixed constants
         
         // Actions
         const val ACTION_START = "com.oymyisme.studytimer.action.START"
@@ -63,191 +44,133 @@ class StudyTimerService : Service() {
         const val EXTRA_ALARM_SOUND_TYPE = "com.oymyisme.studytimer.extra.ALARM_SOUND_TYPE"
         const val EXTRA_EYE_REST_SOUND_TYPE = "com.oymyisme.studytimer.extra.EYE_REST_SOUND_TYPE"
         const val EXTRA_TEST_MODE = "com.oymyisme.studytimer.extra.TEST_MODE"
-        
-        // 测试模式的常量 - 缩短一半时长
-        // 测试模式的时间常量已移至 TestMode 类中统一管理
-
-        // Vibration Patterns
-        val VIBRATE_PATTERN_ALARM = longArrayOf(0, 1000, 500, 1000) // Wait 0ms, Vibrate 1s, Pause 0.5s, Vibrate 1s
-        val VIBRATE_PATTERN_SHORT = longArrayOf(0, 300)            // Wait 0ms, Vibrate 0.3s
-    }
-    
-    // Timer state
-    enum class TimerState {
-        IDLE, STUDYING, EYE_REST, BREAK
     }
     
     // Binder for client communication
     private val binder = LocalBinder()
     
-    // StateFlow for UI updates
-    private val _timerState = MutableStateFlow(TimerState.IDLE)
-    val timerState: StateFlow<TimerState> = _timerState.asStateFlow()
+    // 管理器实例
+    private lateinit var timerManager: TimerManager
+    private lateinit var audioManager: AudioPlayerManager
+    private lateinit var notificationManager: NotificationHelper
+    private lateinit var vibrationManager: VibrationManager
     
-    private val _timeLeftInSession = MutableStateFlow(0L)
-    val timeLeftInSession: StateFlow<Long> = _timeLeftInSession.asStateFlow()
+    // 暴露状态流给 UI
+    val timerState: StateFlow<TimerManager.TimerState>
+        get() = timerManager.timerState
     
-    private val _timeUntilNextAlarm = MutableStateFlow(0L)
-    val timeUntilNextAlarm: StateFlow<Long> = _timeUntilNextAlarm.asStateFlow()
-
-    // New StateFlow for full cycle progress
-    private val _elapsedTimeInFullCycleMillis = MutableStateFlow(0L)
-    val elapsedTimeInFullCycleMillis: StateFlow<Long> = _elapsedTimeInFullCycleMillis.asStateFlow()
+    val timeLeftInSession: StateFlow<Long>
+        get() = timerManager.timeLeftInSession
     
-    // 新增状态流，用于通知 UI 周期已完成
-    private val _cycleCompleted = MutableStateFlow(false)
-    val cycleCompleted: StateFlow<Boolean> = _cycleCompleted.asStateFlow()
+    val timeUntilNextAlarm: StateFlow<Long>
+        get() = timerManager.timeUntilNextAlarm
     
-    // Timers
-    private var sessionTimer: CountDownTimer? = null
-    private var alarmTimer: CountDownTimer? = null
-    private var eyeRestTimer: CountDownTimer? = null
+    val elapsedTimeInFullCycleMillis: StateFlow<Long>
+        get() = timerManager.elapsedTimeInFullCycleMillis
+    
+    val cycleCompleted: StateFlow<Boolean>
+        get() = timerManager.cycleCompleted
     
     // Wake lock to keep CPU running
     private var wakeLock: PowerManager.WakeLock? = null
     
-    // Random for alarm intervals
-    private val random = Random()
-    
-    // Configurable durations (in minutes)
+    // 配置参数
     private var studyDurationMin: Int = DEFAULT_STUDY_TIME_MIN
     private var breakDurationMin: Int = DEFAULT_BREAK_TIME_MIN
     private var minAlarmIntervalMin: Int = DEFAULT_MIN_ALARM_INTERVAL_MIN
     private var maxAlarmIntervalMin: Int = DEFAULT_MAX_ALARM_INTERVAL_MIN
-    
-    // Calculated time values in milliseconds
-    private val studyTimeMs: Long
-        get() = if (testMode) {
-            // 测试模式下使用 TestMode 类中定义的常量
-            TestMode.TEST_STUDY_TIME_MS
-        } else {
-            studyDurationMin * 60 * 1000L
-        }
-    
-    private val breakTimeMs: Long
-        get() = if (testMode) {
-            // 测试模式下使用 TestMode 类中定义的常量
-            TestMode.TEST_BREAK_TIME_MS
-        } else {
-            breakDurationMin * 60 * 1000L
-        }
-    
-    private val minAlarmIntervalMs: Long
-        get() = if (testMode) {
-            // 测试模式下使用 TestMode 类中定义的常量
-            TestMode.TEST_ALARM_INTERVAL_MS
-        } else {
-            minAlarmIntervalMin * 60 * 1000L
-        }
-    
-    private val maxAlarmIntervalMs: Long
-        get() = if (testMode) {
-            // 测试模式下使用 TestMode 类中定义的常量
-            TestMode.TEST_ALARM_INTERVAL_MS
-        } else {
-            maxAlarmIntervalMin * 60 * 1000L
-        }
-    
-    private var showNextAlarmTimeInNotification: Boolean = false // Default value
-    
-    // 提示音类型
+    private var showNextAlarmTimeInNotification: Boolean = false
     private var alarmSoundType: String = SoundOptions.DEFAULT_ALARM_SOUND_TYPE
     private var eyeRestSoundType: String = SoundOptions.DEFAULT_EYE_REST_SOUND_TYPE
+    private var testMode: Boolean = BuildConfig.DEBUG
     
-    // 测试模式 - 默认开启
-    private var testMode: Boolean = true
-    
-    private lateinit var audioManager: AudioManager
-    private var mediaPlayer: MediaPlayer? = null
-    
-    // 音频播放类型枚举，用于区分不同的声音类型
-    private enum class SoundType {
-        ALARM,
-        BREAK,
-        EYE_REST
-    }
-    
-    // 当前正在播放的声音类型
-    private var currentSoundType: SoundType? = null
-    
-    // Durations for the current full cycle
-    private var mStudyDurationMillis: Long = 0L
-    private var mBreakDurationMillis: Long = 0L
-    private var mTotalCycleDurationMillis: Long = 0L
-    
+    /**
+     * 内部类，用于客户端绑定
+     */
     inner class LocalBinder : Binder() {
         fun getService(): StudyTimerService = this@StudyTimerService
     }
     
-    @Suppress("DEPRECATION") // For isWiredHeadsetOn
-    private fun isHeadsetConnected(): Boolean {
-        val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        if (audioManager.isWiredHeadsetOn) {
-            Log.d(TAG, "isHeadsetConnected: Wired headset ON")
-            return true
-        }
-        // For Bluetooth, checking isBluetoothA2dpOn or isBluetoothScoOn can be indicative,
-        // but for more robust checks, especially on newer APIs, iterating through devices is better.
-        if (audioManager.isBluetoothA2dpOn) {
-            Log.d(TAG, "isHeadsetConnected: Bluetooth A2DP potentially active")
-            // return true; // Could return true here if A2DP on is sufficient
-        }
-        if (audioManager.isBluetoothScoOn) {
-            Log.d(TAG, "isHeadsetConnected: Bluetooth SCO active")
-            return true;
-        }
-    
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val devices = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
-            for (device in devices) {
-                when (device.type) {
-                    AudioDeviceInfo.TYPE_WIRED_HEADSET,
-                    AudioDeviceInfo.TYPE_WIRED_HEADPHONES,
-                    AudioDeviceInfo.TYPE_BLUETOOTH_A2DP,
-                    AudioDeviceInfo.TYPE_BLUETOOTH_SCO,
-                    AudioDeviceInfo.TYPE_USB_HEADSET -> {
-                        Log.d(TAG, "isHeadsetConnected: Headset found via device list (Type: ${device.type})")
-                        return true
-                    }
-                }
-            }
-        }
-        Log.d(TAG, "isHeadsetConnected: No headset detected")
-        return false
-    }
-    
     override fun onCreate() {
         super.onCreate()
-        Log.d(TAG, "Service created")
-        audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
         
-        // Create notification channel
-        createNotificationChannel()
-
-        // 初始化时计算总周期时长，确保在 IDLE 状态下显示正确的总周期时长
-        // 这里的默认值适用于初始的 _elapsedTimeInFullCycleMillis 设置
-        updateCurrentDurationsInternal()
-
-        // Initialize wake lock
+        if (BuildConfig.DEBUG) {
+            Log.d(TAG, "Service created")
+        }
+        
+        // 初始化管理器
+        timerManager = TimerManager()
+        audioManager = AudioPlayerManager.getInstance(this)
+        notificationManager = NotificationHelper.getInstance(this)
+        vibrationManager = VibrationManager.getInstance(this)
+        
+        // 设置计时器回调
+        timerManager.setCallback(object : TimerManager.TimerCallback {
+            override fun onTimerTick(timeLeftInSession: Long) {
+                updateNotification()
+            }
+            
+            override fun onAlarmTick(timeUntilNextAlarm: Long) {
+                updateNotification()
+            }
+            
+            override fun onAlarmTriggered() {
+                audioManager.playEyeRestSound(eyeRestSoundType)
+                vibrationManager.vibrateForAlarm()
+                updateNotification()
+            }
+            
+            override fun onEyeRestStarted() {
+                updateNotification()
+            }
+            
+            override fun onEyeRestTick(timeLeftInEyeRest: Long) {
+                updateNotification()
+            }
+            
+            override fun onEyeRestFinished() {
+                audioManager.playEyeRestCompleteSound(eyeRestSoundType)
+                vibrationManager.vibrateShort()
+                updateNotification()
+            }
+            
+            override fun onStudySessionFinished() {
+                audioManager.playAlarmSound(alarmSoundType)
+                vibrationManager.vibrateForAlarm()
+                updateNotification()
+            }
+            
+            override fun onBreakFinished() {
+                audioManager.playAlarmSound(alarmSoundType)
+                vibrationManager.vibrateForAlarm()
+                updateNotification()
+            }
+            
+            override fun onCycleCompleted() {
+                updateNotification()
+            }
+        })
+        
+        // 创建通知渠道
+        notificationManager.createNotificationChannel()
+        
+        // 获取 WakeLock 保持 CPU 运行
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
         wakeLock = powerManager.newWakeLock(
             PowerManager.PARTIAL_WAKE_LOCK,
-            "StudyTimer:StudyTimerWakeLock"
+            "StudyTimer::WakeLock"
         )
-
-        // If starting in IDLE state, set progress appropriately
-        if (_timerState.value == TimerState.IDLE) {
-            _timeLeftInSession.value = mStudyDurationMillis // Show potential study time
-            _elapsedTimeInFullCycleMillis.value = mTotalCycleDurationMillis // Show full progress
-        }
     }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.d(TAG, "Service onStartCommand")
+        if (BuildConfig.DEBUG) {
+            Log.d(TAG, "Service onStartCommand")
+        }
+        
         intent?.let {
             when (it.action) {
                 ACTION_START -> {
-                    // Read configurable parameters from intent
+                    // 从 Intent 中读取参数
                     studyDurationMin = it.getIntExtra(EXTRA_STUDY_DURATION_MIN, DEFAULT_STUDY_TIME_MIN)
                     breakDurationMin = it.getIntExtra(EXTRA_BREAK_DURATION_MIN, DEFAULT_BREAK_TIME_MIN)
                     minAlarmIntervalMin = it.getIntExtra(EXTRA_MIN_ALARM_INTERVAL_MIN, DEFAULT_MIN_ALARM_INTERVAL_MIN)
@@ -256,33 +179,67 @@ class StudyTimerService : Service() {
                     alarmSoundType = it.getStringExtra(EXTRA_ALARM_SOUND_TYPE) ?: SoundOptions.DEFAULT_ALARM_SOUND_TYPE
                     eyeRestSoundType = it.getStringExtra(EXTRA_EYE_REST_SOUND_TYPE) ?: SoundOptions.DEFAULT_EYE_REST_SOUND_TYPE
                     
-                    // If EXTRA_TEST_MODE is explicitly passed in the intent, use its value.
-                    // Otherwise, testMode retains its initial value (BuildConfig.DEBUG).
+                    // 如果 Intent 中显式传入了 EXTRA_TEST_MODE，使用其值
                     if (it.hasExtra(EXTRA_TEST_MODE)) {
-                        testMode = it.getBooleanExtra(EXTRA_TEST_MODE, BuildConfig.DEBUG) // Default to BuildConfig.DEBUG if key exists but somehow fails to get bool
+                        testMode = it.getBooleanExtra(EXTRA_TEST_MODE, BuildConfig.DEBUG)
                     }
-                    Log.d(TAG, "Starting service with study: $studyDurationMin min, break: $breakDurationMin min, testMode: $testMode (BuildConfig.DEBUG is ${BuildConfig.DEBUG})")
-
-                    updateCurrentDurationsInternal() // Update durations based on potentially new testMode
                     
-                    // 立即启动前台服务，防止 ANR
-                    val initialNotification = createNotification("Starting Study Timer...")
+                    if (BuildConfig.DEBUG) {
+                        Log.d(TAG, "Starting service with study: $studyDurationMin min, break: $breakDurationMin min, testMode: $testMode")
+                    }
+                    
+                    // 配置 TimerManager
+                    timerManager.configure(
+                        studyDurationMin,
+                        breakDurationMin,
+                        minAlarmIntervalMin,
+                        maxAlarmIntervalMin,
+                        testMode
+                    )
+                    
+                    // 创建初始通知
+                    val initialNotification = notificationManager.createNotification(
+                        TimerManager.TimerState.IDLE,
+                        0L,
+                        showNextAlarmTimeInNotification,
+                        0L
+                    )
+                    
+                    // 启动前台服务
                     startForeground(NOTIFICATION_ID, initialNotification)
-                    Log.d(TAG, "Started foreground service with notification ID: $NOTIFICATION_ID")
                     
-                    // Acquire wakelock only if not already held and timer is starting
-                    if (wakeLock?.isHeld == false) {
-                        // Calculate a suitable timeout, e.g., sum of study and break times + buffer
-                        val timeout = (studyTimeMs + breakTimeMs + 60000L).let { duration -> if (duration <= 0) 3 * 60 * 60 * 1000L else duration } // Default to 3hrs if calculated is 0
-                        wakeLock?.acquire(timeout)
-                        Log.d(TAG, "WakeLock acquired in onStartCommand for ACTION_START with timeout ${timeout}ms")
+                    if (BuildConfig.DEBUG) {
+                        Log.d(TAG, "Started foreground service with notification ID: $NOTIFICATION_ID")
                     }
-                    startNextSessionPhase(true) // Start with study session
+                    
+                    // 获取 WakeLock
+                    if (wakeLock?.isHeld == false) {
+                        // 计算适当的超时时间
+                        val timeout = (timerManager.studyTimeMs + timerManager.breakTimeMs + 60000L).let { duration ->
+                            if (duration <= 0) 3 * 60 * 60 * 1000L else duration
+                        } // 如果计算结果为 0，默认使用 3 小时
+                        wakeLock?.acquire(timeout)
+                        
+                        if (BuildConfig.DEBUG) {
+                            Log.d(TAG, "WakeLock acquired with timeout ${timeout}ms")
+                        }
+                    }
+                    
+                    // 开始学习会话
+                    timerManager.startStudySession()
                 }
+                
                 ACTION_STOP -> {
-                    stopTimers()
-                    stopForeground(STOP_FOREGROUND_REMOVE )
+                    // 停止计时器
+                    timerManager.stopAllTimers()
+                    
+                    // 停止前台服务
+                    stopForeground(STOP_FOREGROUND_REMOVE)
                     stopSelf()
+                    
+                    if (BuildConfig.DEBUG) {
+                        Log.d(TAG, "Service stopped")
+                    }
                 }
             }
         }
@@ -294,39 +251,16 @@ class StudyTimerService : Service() {
         return binder
     }
     
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val name = getString(R.string.notification_channel_name)
-            val descriptionText = getString(R.string.notification_channel_description)
-            val importance = NotificationManager.IMPORTANCE_LOW // 降低重要性级别，避免声音干扰
-            val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
-                description = descriptionText
-                setSound(null, null) // 禁用通知声音
-                enableVibration(false) // 禁用振动
-            }
-            
-            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            notificationManager.createNotificationChannel(channel)
-        }
-    }
-    
-    private fun createNotification(contentText: String): Notification {
-        val notificationIntent = Intent(this, MainActivity::class.java)
-        val pendingIntent = PendingIntent.getActivity(
-            this, 0, notificationIntent,
-            PendingIntent.FLAG_IMMUTABLE
+    /**
+     * 更新通知
+     */
+    private fun updateNotification() {
+        notificationManager.updateNotification(
+            timerManager.timerState.value,
+            timerManager.timeLeftInSession.value,
+            showNextAlarmTimeInNotification,
+            timerManager.timeUntilNextAlarm.value
         )
-        
-        return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle(getString(R.string.notification_title))
-            .setContentText(contentText)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentIntent(pendingIntent)
-            .setOngoing(true)
-            .setSound(null) // 禁用通知声音
-            .setVibrate(null) // 禁用振动
-            .setDefaults(0) // 清除所有默认设置
-            .build()
     }
     
     /**
@@ -334,8 +268,11 @@ class StudyTimerService : Service() {
      * 当用户选择继续下一个周期时调用
      */
     fun resetCycleCompleted() {
-        _cycleCompleted.value = false
-        Log.d(TAG, "Cycle completed state reset")
+        timerManager.resetCycleCompleted()
+        
+        if (BuildConfig.DEBUG) {
+            Log.d(TAG, "Cycle completed state reset")
+        }
     }
     
     /**
@@ -349,712 +286,44 @@ class StudyTimerService : Service() {
         studyDurationMin = studyDurationMinutes
         breakDurationMin = calculateDefaultBreak(studyDurationMinutes)
         
-        // 更新内部时长计算
-        updateCurrentDurationsInternal()
-        
-        Log.d(TAG, "Test mode updated: $enabled, Study duration: $studyDurationMinutes min, Break duration: $breakDurationMin min")
-    }
-    
-    private fun startNextSessionPhase(isStudySession: Boolean) {
-        // 开始新周期时重置周期完成状态
-        _cycleCompleted.value = false
-        
-        Log.d(TAG, "Starting next session phase. Is Study: $isStudySession, Current State: ${_timerState.value}")
-        sessionTimer?.cancel() // Cancel any existing session timer
-        
-        if (isStudySession) {
-            _timerState.value = TimerState.STUDYING
-            _timeLeftInSession.value = studyTimeMs
-            _elapsedTimeInFullCycleMillis.value = 0L // Reset for new full cycle
-            Log.d(TAG, "Starting study session. Duration: ${studyTimeMs}ms. Full cycle progress reset.")
-            
-            sessionTimer = object : CountDownTimer(studyTimeMs, 1000) {
-                override fun onTick(millisUntilFinished: Long) {
-                    _timeLeftInSession.value = millisUntilFinished
-                    _elapsedTimeInFullCycleMillis.value = mStudyDurationMillis - millisUntilFinished
-                    updateNotification(getNotificationContentText())
-                    // Handle random alarm scheduling logic
-                }
-                
-                override fun onFinish() {
-                    Log.d(TAG, "Study session finished")
-                    _timeLeftInSession.value = 0L
-                    _elapsedTimeInFullCycleMillis.value = mStudyDurationMillis // Study part of cycle is complete
-                    playAlarmSound() // Notify end of study
-                    vibrate(VIBRATE_PATTERN_ALARM, -1)
-                    // Automatically start break after study
-                    startNextSessionPhase(false)
-                }
-            }.start()
-            scheduleNextAlarm() // Schedule the first random alarm for the study session
-        } else { // Start Break Session
-            _timerState.value = TimerState.BREAK
-            _timeLeftInSession.value = breakTimeMs
-            // _elapsedTimeInFullCycleMillis continues from study session
-            Log.d(TAG, "Starting break session. Duration: ${breakTimeMs}ms. Full cycle progress continues.")
-            playBreakSound()
-            
-            sessionTimer = object : CountDownTimer(breakTimeMs, 1000) {
-                override fun onTick(millisUntilFinished: Long) {
-                    _timeLeftInSession.value = millisUntilFinished
-                    _elapsedTimeInFullCycleMillis.value = mStudyDurationMillis + (mBreakDurationMillis - millisUntilFinished)
-                    updateNotification(getNotificationContentText())
-                }
-                
-                override fun onFinish() {
-                    Log.d(TAG, "Break session finished")
-                    _timeLeftInSession.value = 0L
-                    _elapsedTimeInFullCycleMillis.value = mTotalCycleDurationMillis // Full cycle is complete
-                    playEyeRestCompleteSound() // Notify end of break
-                    vibrate(VIBRATE_PATTERN_ALARM, -1)
-                    _timerState.value = TimerState.IDLE
-                    
-                    // 增强周期完成状态设置，确保对话框显示
-                    _cycleCompleted.value = true
-                    Log.d(TAG, "Cycle completed, notifying UI. _cycleCompleted.value = ${_cycleCompleted.value}")
-                    
-                    // 延迟一秒再次确认状态已设置
-                    Handler(Looper.getMainLooper()).postDelayed({
-                        Log.d(TAG, "Checking cycle completed state after delay: ${_cycleCompleted.value}")
-                    }, 1000)
-                    
-                    // After break, go to IDLE, user can start a new session.
-                    updateNotification(getString(R.string.notification_timer_finished))
-                    // Update durations and reset timeLeft for IDLE state to show potential study time
-                    updateCurrentDurationsInternal()
-                    _timeLeftInSession.value = mStudyDurationMillis
-                    // _elapsedTimeInFullCycleMillis is already mTotalCycleDurationMillis
-                    Log.d(TAG, "Timer finished. State set to IDLE.")
-                    // Consider stopping the service or just wait for user action
-                    // stopSelf() // if service should stop after one full cycle
-                }
-            }.start()
-        }
-    }
-    
-    // 保存眼部休息前的状态和时间
-    private var _timeLeftBeforeEyeRest: Long = 0L
-    private var _timeUntilNextAlarmBeforeEyeRest: Long = 0L
-    private var _previousTimerStateBeforeEyeRest: TimerState = TimerState.IDLE
-    private var _studyTimerBeforeEyeRest: CountDownTimer? = null
-    private var _alarmTimerBeforeEyeRest: CountDownTimer? = null
-    
-    private fun startEyeRestTimer() {
-        
-        // 保存当前状态，以便在眼部休息结束后恢复
-        _previousTimerStateBeforeEyeRest = _timerState.value
-        _timeLeftBeforeEyeRest = _timeLeftInSession.value
-        _timeUntilNextAlarmBeforeEyeRest = _timeUntilNextAlarm.value
-        _studyTimerBeforeEyeRest = sessionTimer
-        _alarmTimerBeforeEyeRest = alarmTimer
-        
-        // 切换到眼部休息状态
-        _timerState.value = TimerState.EYE_REST
-        _timeLeftInSession.value = EYE_REST_TIME_MS // 设置眼部休息倒计时
-        
-        // 眼部休息期间，_elapsedTimeInFullCycleMillis 会通过主计时器继续更新
-        Log.d(TAG, "Starting eye rest. Full cycle progress: ${_elapsedTimeInFullCycleMillis.value}. Study time left: ${_timeLeftBeforeEyeRest}. Alarm time left: ${_timeUntilNextAlarmBeforeEyeRest}")
-
-        
-        updateNotification(getString(R.string.notification_eye_rest_start))
-        
-        // 不在这里播放闹钟声音，因为已经在 triggerAlarm 中播放了
-        
-        
-        eyeRestTimer = object : CountDownTimer(EYE_REST_TIME_MS, 1000) {
-            
-            override fun onTick(millisUntilFinished: Long) {
-                
-                _timeLeftInSession.value = millisUntilFinished
-                // 主计时器在后台继续运行，所以不需要在这里更新 _elapsedTimeInFullCycleMillis
-                updateNotification(getString(R.string.notification_eye_rest_ongoing, formatTime(millisUntilFinished)))
-            
-                // 每3秒记录一次眼部休息状态
-                if (millisUntilFinished % 3000 < 1000) {
-                    Log.d(TAG, "Eye rest ongoing: ${formatTime(millisUntilFinished)} remaining")
-                }
-            }
-            
-            
-            override fun onFinish() {
-                
-                Log.d(TAG, "Eye rest finished. Previous state: $_previousTimerStateBeforeEyeRest")
-                
-                _timeLeftInSession.value = 0L // 眼部休息时间结束
-                
-                playEyeRestCompleteSound()
-                
-                vibrate(VIBRATE_PATTERN_SHORT, -1)
-                
-                
-                // 恢复到之前的状态（应该是 STUDYING）
-                _timerState.value = _previousTimerStateBeforeEyeRest
-                
-                
-                if (_previousTimerStateBeforeEyeRest == TimerState.STUDYING) {
-                    
-                    // 恢复显示的剩余学习时间
-                    // 注意：实际的学习计时器已经在后台继续运行，所以这里只需要恢复显示值
-                    _timeLeftInSession.value = _timeLeftBeforeEyeRest - EYE_REST_TIME_MS
-                    _timeUntilNextAlarm.value = _timeUntilNextAlarmBeforeEyeRest
-                    
-                    // 更新通知
-                    updateNotification(getNotificationContentText())
-                    
-                    // 不需要重新启动计时器，因为它们一直在运行
-                    Log.d(TAG, "Resumed study display after eye rest. Remaining: ${formatTime(_timeLeftInSession.value)}")
-                    
-                } else {
-                    
-                    // 如果之前的状态不是 STUDYING（眼部休息不应该发生在其他状态），进入 IDLE 状态
-                    Log.w(TAG, "Eye rest finished, but previous state was not STUDYING ($_previousTimerStateBeforeEyeRest). Going IDLE.")
-                    
-                    stopTimers() 
-                
-                }
-            
-            }
-        
-        }.start()
-    
-    }
-
-    private fun resumeStudySession(remainingMillis: Long) {
-        _timerState.value = TimerState.STUDYING
-        _timeLeftInSession.value = remainingMillis
-        Log.d(TAG, "Resuming study session with ${remainingMillis}ms remaining. Full cycle progress: ${_elapsedTimeInFullCycleMillis.value}")
-
-        sessionTimer?.cancel()
-        sessionTimer = object : CountDownTimer(remainingMillis, 1000) {
-            override fun onTick(millisUntilFinished: Long) {
-                _timeLeftInSession.value = millisUntilFinished
-                _elapsedTimeInFullCycleMillis.value = mStudyDurationMillis - millisUntilFinished // Recalculate from full study duration
-                updateNotification(getNotificationContentText())
-            }
-
-            override fun onFinish() {
-                Log.d(TAG, "Resumed study session finished")
-                _timeLeftInSession.value = 0L
-                _elapsedTimeInFullCycleMillis.value = mStudyDurationMillis
-                playAlarmSound()
-                vibrate(VIBRATE_PATTERN_ALARM, -1)
-                startNextSessionPhase(false) // Start break
-            }
-        }.start()
-        scheduleNextAlarm() // Reschedule random alarm
-    }
-
-    private fun updateCurrentDurationsInternal() {
-        // These use the class members studyDurationMin, breakDurationMin, testMode
-        // which are updated in onStartCommand
-        mStudyDurationMillis = studyTimeMs 
-        mBreakDurationMillis = breakTimeMs
-        mTotalCycleDurationMillis = mStudyDurationMillis + mBreakDurationMillis
-        Log.d(TAG, "Updated internal durations: Study=${mStudyDurationMillis}ms (${studyDurationMin}min), Break=${mBreakDurationMillis}ms (${breakDurationMin}min), Total=${mTotalCycleDurationMillis}ms. TestMode=$testMode")
-        
-        // 如果当前是 IDLE 状态，更新剩余时间和周期时间显示
-        if (_timerState.value == TimerState.IDLE) {
-            _timeLeftInSession.value = mTotalCycleDurationMillis // 显示总周期时长（学习+休息）
-            _elapsedTimeInFullCycleMillis.value = 0L // 重置进度
-            Log.d(TAG, "Updated IDLE state time display: timeLeft=${_timeLeftInSession.value}ms (total cycle duration), elapsedTime=${_elapsedTimeInFullCycleMillis.value}ms")
-        }
-    }
- 
-    private fun scheduleNextAlarm() {
-        alarmTimer?.cancel()
-        // Generate random interval between min and max
-        val minMs = minAlarmIntervalMs
-        val maxMs = maxAlarmIntervalMs
-        val range = (maxMs - minMs).toInt()
-        
-        // Ensure range is positive
-        val interval = if (range > 0) {
-            minMs + random.nextInt(range)
-        } else {
-            minMs
-        }
-        
-        _timeUntilNextAlarm.value = interval
-        
-        // 记录闹钟计划信息
-        val minutes = interval / (60 * 1000)
-        val seconds = (interval % (60 * 1000)) / 1000
-        Log.d(TAG, "Scheduling next alarm in $minutes min $seconds sec (${interval}ms). Min: ${minMs}ms, Max: ${maxMs}ms")
-        
-        alarmTimer = object : CountDownTimer(interval, 1000) {
-            override fun onTick(millisUntilFinished: Long) {
-                _timeUntilNextAlarm.value = millisUntilFinished
-                
-                // 每30秒记录一次闹钟剩余时间
-                if (millisUntilFinished % 30000 < 1000) {
-                    val remainingMin = millisUntilFinished / (60 * 1000)
-                    val remainingSec = (millisUntilFinished % (60 * 1000)) / 1000
-                    Log.d(TAG, "Alarm countdown: $remainingMin min $remainingSec sec remaining. Current state: ${_timerState.value}")
-                }
-                
-                updateNotification()
-            }
-            
-            override fun onFinish() {
-                Log.d(TAG, "Alarm timer finished. Current state: ${_timerState.value}")
-                if (_timerState.value == TimerState.STUDYING) {
-                    Log.d(TAG, "Triggering eye rest alarm")
-                    triggerAlarm()
-                } else {
-                    Log.d(TAG, "Not triggering alarm because state is not STUDYING")
-                }
-            }
-        }.start()
-    }
-    
-    private fun triggerAlarm() {
-        Log.d(TAG, "Triggering alarm for eye rest")
-        
-        // Play alarm sound
-        playAlarmSound()
-        
-        // Vibrate device with a pattern for eye rest notification
-        vibrate(VIBRATE_PATTERN_ALARM, -1)
-        
-        // Start eye rest timer
-        startEyeRestTimer()
-        
-        // 在触发闹钟后立即计划下一次闹钟，确保循环继续
-        Handler(Looper.getMainLooper()).postDelayed({
-            if (_timerState.value == TimerState.STUDYING) {
-                Log.d(TAG, "Scheduling next alarm after eye rest")
-                scheduleNextAlarm()
-            }
-        }, EYE_REST_TIME_MS + 1000) // 等待眼部休息结束后再计划下一次闹钟
-    }
-    
-    private fun startEyeRest() {
-        _timerState.value = TimerState.EYE_REST
-        updateNotification(getString(R.string.notification_rest_eyes))
-        
-        // Start eye rest timer
-        eyeRestTimer = object : CountDownTimer(EYE_REST_TIME_MS, 1000) {
-            override fun onTick(millisUntilFinished: Long) {
-                updateNotification(getString(R.string.notification_eye_rest_ongoing, formatTime(millisUntilFinished)))
-            }
-            
-            override fun onFinish() {
-                // Play a gentle sound to indicate eye rest is complete
-                playEyeRestCompleteSound()
-                
-                // Resume study session
-                resumeStudySession()
-            }
-        }.start()
-    }
-    
-    private fun resumeStudySession() {
-        _timerState.value = TimerState.STUDYING
-        updateNotification() // Update notification to reflect STUDYING state
-        
-        // Schedule next alarm (since the main timer didn't stop, we just need the next alarm)
-        scheduleNextAlarm()
-    }
-    
-    private fun startBreak() {
-        Log.d(TAG, "Starting break for $breakDurationMin minutes")
-        _timerState.value = TimerState.BREAK
-        _timeLeftInSession.value = TimeUnit.MINUTES.toMillis(breakDurationMin.toLong()) // Use stored break duration
-        
-        // 播放休息开始提示音
-        playBreakSound()
-        
-        sessionTimer?.cancel()
-        sessionTimer = object : CountDownTimer(_timeLeftInSession.value, 1000) {
-            override fun onTick(millisUntilFinished: Long) {
-                _timeLeftInSession.value = millisUntilFinished
-                updateNotification()
-            }
-            
-            override fun onFinish() {
-                Log.d(TAG, "Break finished.")
-                // Play sound for break completion using playEyeRestCompleteSound
-                Log.d(TAG, "Playing break complete sound (using eye rest sound).")
-                playEyeRestCompleteSound() // Always attempt to play the sound using eyeRestSoundType
-
-                // TODO: Decide what happens after break finishes (e.g., start new study session or stop)
-                // For now, let's assume it stops or goes to a paused state, awaiting user action.
-            }
-        }.start()
-        updateNotification(getString(R.string.notification_break_time, breakDurationMin))
-    }
-    
-    private fun playAlarmSound() {
-        Log.d(TAG, "playAlarmSound: Delegating to playSound method. Type: $alarmSoundType")
-        playSound(alarmSoundType, SoundType.ALARM)
-    }
-
-    private fun playBreakSound() {
-        Log.d(TAG, "playBreakSound: Delegating to playSound method. Type: $eyeRestSoundType")
-        playSound(eyeRestSoundType, SoundType.BREAK)
-    }
-
-
-    private fun playEyeRestCompleteSound() {
-        Log.d(TAG, "playEyeRestCompleteSound: Delegating to playSound method. Type: $eyeRestSoundType")
-        playSound(eyeRestSoundType, SoundType.EYE_REST)
-    }
-
-    private fun vibrate(pattern: LongArray, repeat: Int = -1) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val vibratorManager = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
-            val vibrator = vibratorManager.defaultVibrator
-            
-            vibrator.vibrate(VibrationEffect.createWaveform(pattern, repeat))
-        } else {
-            @Suppress("DEPRECATION")
-            val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-            
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                vibrator.vibrate(VibrationEffect.createWaveform(pattern, repeat))
-            } else {
-                @Suppress("DEPRECATION")
-                vibrator.vibrate(pattern, repeat)
-            }
-        }
-    }
-    
-    private fun updateNotification(customMessage: String? = null) {
-        val contentText = customMessage ?: getNotificationContentText()
-        val notification = createNotification(contentText)
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.notify(NOTIFICATION_ID, notification)
-    }
-    
-    private fun getNotificationContentText(): String {
-        return when (_timerState.value) {
-            TimerState.STUDYING -> {
-                val sessionTime = formatTime(_timeLeftInSession.value)
-                if (showNextAlarmTimeInNotification) {
-                    val alarmTime = formatTime(_timeUntilNextAlarm.value)
-                    getString(R.string.notification_studying_with_alarm, sessionTime, alarmTime)
-                } else {
-                    getString(R.string.notification_studying, sessionTime)
-                }
-            }
-            TimerState.BREAK -> getString(R.string.notification_break, formatTime(_timeLeftInSession.value))
-            TimerState.EYE_REST -> getString(R.string.notification_eye_rest, formatTime(EYE_REST_TIME_MS - (_timeUntilNextAlarm.value)))
-            TimerState.IDLE -> getString(R.string.notification_idle)
-        }
-    }
-    
-    private fun formatTime(millis: Long): String {
-        return String.format(
-            Locale.ENGLISH,
-            "%02d:%02d:%02d",
-            TimeUnit.MILLISECONDS.toHours(millis),
-            TimeUnit.MILLISECONDS.toMinutes(millis) % 60,
-            TimeUnit.MILLISECONDS.toSeconds(millis) % 60
+        // 更新 TimerManager 的配置
+        timerManager.configure(
+            studyDurationMin,
+            breakDurationMin,
+            minAlarmIntervalMin,
+            maxAlarmIntervalMin,
+            testMode
         )
-    }
-    
-    private fun stopTimers() {
-        Log.d(TAG, "Stopping all timers")
-        sessionTimer?.cancel()
-        sessionTimer = null
         
-        alarmTimer?.cancel()
-        alarmTimer = null
-        
-        eyeRestTimer?.cancel()
-        eyeRestTimer = null
-        
-        _timerState.value = TimerState.IDLE
-        _timeLeftInSession.value = mTotalCycleDurationMillis // 设置为总周期时长，而不是0
-        _timeUntilNextAlarm.value = 0
-        
-        // Release wake lock if held
-        if (wakeLock?.isHeld == true) {
-            wakeLock?.release()
-            Log.d(TAG, "Wakelock released in stopTimers")
+        if (BuildConfig.DEBUG) {
+            Log.d(TAG, "Test mode updated: $enabled, Study duration: $studyDurationMinutes min, Break duration: $breakDurationMin min")
         }
     }
     
+    /**
+     * 计算默认休息时间
+     * 基于学习时间计算默认的休息时间
+     */
     private fun calculateDefaultBreak(studyDuration: Int): Int {
-        val calculated = (studyDuration * (20.0 / 90.0)).roundToInt()
-        return maxOf(5, calculated)
-    }
-
-    private fun startNextSessionPhase(nextState: TimerState) {
-        Log.d(TAG, "startNextSessionPhase called with nextState: $nextState, current _timerState: ${_timerState.value}")
-        stopTimers() // Stop any existing timers before starting new ones
-
-        // Acquire wakelock if not already held, with a timeout relevant to the session
-        if (wakeLock?.isHeld == false) {
-            val sessionDurationMs = when (nextState) {
-                TimerState.STUDYING -> studyTimeMs
-                TimerState.BREAK -> breakTimeMs
-                else -> 0L // No specific duration for IDLE or EYE_REST from here
-            }
-            if (sessionDurationMs > 0) {
-                wakeLock?.acquire(sessionDurationMs + 10000L) // Acquire for session duration + 10s buffer
-                Log.d(TAG, "Wakelock acquired for state $nextState with timeout ${sessionDurationMs + 10000L}ms")
-            } else {
-                // For states like EYE_REST, a shorter, fixed wakelock might be handled elsewhere if needed
-                // Or a general short wakelock for other operations
-                Log.d(TAG, "Wakelock not acquired for state $nextState due to zero session duration.")
-            }
-        }
-
-        _timerState.value = nextState
-        // Update current cycle durations based on the potentially new testMode status or settings
-        when (nextState) {
-            TimerState.STUDYING -> {
-                _timeLeftInSession.value = studyTimeMs
-                _elapsedTimeInFullCycleMillis.value = 0L // Reset for new full cycle
-                Log.d(TAG, "Starting study session. Duration: ${studyTimeMs}ms. Full cycle progress reset.")
-                sessionTimer = object : CountDownTimer(studyTimeMs, 1000) {
-                    override fun onTick(millisUntilFinished: Long) {
-                        _timeLeftInSession.value = millisUntilFinished
-                        _elapsedTimeInFullCycleMillis.value = mStudyDurationMillis - millisUntilFinished
-                        updateNotification(getNotificationContentText())
-                        // Handle random alarm scheduling logic
-                    }
-                    
-                    override fun onFinish() {
-                        Log.d(TAG, "Study session finished")
-                        _timeLeftInSession.value = 0L
-                        _elapsedTimeInFullCycleMillis.value = mStudyDurationMillis // Study part of cycle is complete
-                        playAlarmSound() // Notify end of study
-                        vibrate(VIBRATE_PATTERN_ALARM, -1)
-                        // Automatically start break after study
-                        startNextSessionPhase(false)
-                    }
-                }.start()
-                scheduleNextAlarm() // Schedule the first random alarm for the study session
-            }
-            TimerState.BREAK -> {
-                _timerState.value = TimerState.BREAK
-                _timeLeftInSession.value = breakTimeMs
-                // _elapsedTimeInFullCycleMillis continues from study session
-                Log.d(TAG, "Starting break session. Duration: ${breakTimeMs}ms. Full cycle progress continues.")
-                playBreakSound()
-                
-                sessionTimer = object : CountDownTimer(breakTimeMs, 1000) {
-                    override fun onTick(millisUntilFinished: Long) {
-                        _timeLeftInSession.value = millisUntilFinished
-                        _elapsedTimeInFullCycleMillis.value = mStudyDurationMillis + (mBreakDurationMillis - millisUntilFinished)
-                        updateNotification(getNotificationContentText())
-                    }
-                    
-                    override fun onFinish() {
-                        Log.d(TAG, "Break session finished")
-                        _timeLeftInSession.value = 0L
-                        _elapsedTimeInFullCycleMillis.value = mTotalCycleDurationMillis // Full cycle is complete
-                        playEyeRestCompleteSound() // Notify end of break
-                        vibrate(VIBRATE_PATTERN_ALARM, -1)
-                        _timerState.value = TimerState.IDLE
-                        // After break, go to IDLE, user can start a new session.
-                        updateNotification(getString(R.string.notification_timer_finished))
-                        // Update durations and reset timeLeft for IDLE state to show potential study time
-                        updateCurrentDurationsInternal()
-                        _timeLeftInSession.value = mStudyDurationMillis
-                        // _elapsedTimeInFullCycleMillis is already mTotalCycleDurationMillis
-                        Log.d(TAG, "Timer finished. State set to IDLE.")
-                        // Consider stopping the service or just wait for user action
-                        // stopSelf() // if service should stop after one full cycle
-                    }
-                }.start()
-            }
-            else -> {
-                Log.w(TAG, "startNextSessionPhase: Unexpected state $nextState. Going IDLE.")
-                _timerState.value = TimerState.IDLE
-            }
-        }
-    }
-
-    /**
-     * 统一的声音播放方法，用于处理所有类型的声音播放
-     * @param soundTypeId 声音类型 ID，对应 SoundOptions 中的声音类型
-     * @param soundCategory 声音类别，用于区分闹钟、休息和眼睛休息声音
-     */
-    private fun playSound(soundTypeId: String, soundCategory: SoundType) {
-        Log.d(TAG, "playSound: Attempting to play sound. Type: $soundTypeId, Category: $soundCategory")
-        
-        // 释放当前的 MediaPlayer，确保不会同时播放多个声音
-        releaseMediaPlayer()
-        
-        val soundUri = SoundOptions.getSoundUriById(this, soundTypeId)
-        if (soundUri == Uri.EMPTY) {
-            Log.e(TAG, "playSound: Invalid or null sound URI for sound type $soundTypeId")
-            return
-        }
-        Log.d(TAG, "playSound: Sound URI: $soundUri, Category: $soundCategory")
-        
-        try {
-            val mp = MediaPlayer()
-            this.mediaPlayer = mp
-            this.currentSoundType = soundCategory
-            
-            val headsetConnected = isHeadsetConnected()
-            Log.d(TAG, "playSound: Headset connected: $headsetConnected")
-            
-            // 根据声音类别设置不同的音频属性
-            val audioAttributes = AudioAttributes.Builder()
-                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                .setUsage(when (soundCategory) {
-                    SoundType.ALARM -> AudioAttributes.USAGE_ALARM
-                    else -> AudioAttributes.USAGE_NOTIFICATION
-                })
-                .build()
-            mp.setAudioAttributes(audioAttributes)
-            Log.d(TAG, "playSound: AudioAttributes set for category: $soundCategory")
-            
-            // 处理音频路由
-            if (headsetConnected) {
-                Log.d(TAG, "playSound: Headset connected, attempting to route audio to headset.")
-                
-                // 检查是否有蓝牙耳机
-                val hasBluetoothHeadset = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    val devices = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
-                    devices.any { device -> 
-                        device.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP || 
-                        device.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO
-                    }
-                } else {
-                    audioManager.isBluetoothA2dpOn || audioManager.isBluetoothScoOn
-                }
-                
-                if (hasBluetoothHeadset) {
-                    Log.d(TAG, "playSound: Bluetooth headset detected.")
-                    
-                    // 记录原始音频模式，以便在播放完成后恢复
-                    val originalMode = audioManager.mode
-                    
-                    // 设置音频模式为通信模式，这对于蓝牙耳机很重要
-                    audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
-                    
-                    // 尝试启用 SCO
-                    if (audioManager.isBluetoothScoAvailableOffCall) {
-                        Log.d(TAG, "playSound: Bluetooth SCO available. Starting SCO.")
-                        audioManager.startBluetoothSco()
-                        audioManager.isBluetoothScoOn = true
-                        
-                        // 添加延迟检查，确保 SCO 连接已建立
-                        Handler(Looper.getMainLooper()).postDelayed({
-                            Log.d(TAG, "playSound: SCO status after delay: isBluetoothScoOn=${audioManager.isBluetoothScoOn}")
-                        }, 1000)
-                    } else {
-                        Log.d(TAG, "playSound: Bluetooth SCO not available/off call. Using A2DP.")
-                        // 如果 SCO 不可用，尝试使用 A2DP
-                        audioManager.isSpeakerphoneOn = false
-                    }
-                } else {
-                    Log.d(TAG, "playSound: Wired headset detected. Routing audio to wired headset.")
-                    // 有线耳机不需要特殊处理，系统会自动路由
-                    audioManager.isSpeakerphoneOn = false
-                }
-            } else {
-                Log.d(TAG, "playSound: No headset detected. Playing on speaker.")
-                // 确保使用扬声器
-                audioManager.isSpeakerphoneOn = true
-            }
-            
-            // 设置错误监听器
-            mp.setOnErrorListener { player, what, extra ->
-                Log.e(TAG, "playSound: MediaPlayer Error - What: $what, Extra: $extra, URI: $soundUri")
-                player.release()
-                if (this.mediaPlayer == player) {
-                    this.mediaPlayer = null
-                    this.currentSoundType = null
-                }
-                true
-            }
-            
-            // 设置数据源
-            mp.setDataSource(this@StudyTimerService, soundUri)
-            
-            // 记录原始音频模式和蓝牙状态，以便在播放完成后恢复
-            val originalMode = audioManager.mode
-            val originalBluetoothScoOn = audioManager.isBluetoothScoOn
-            
-            // 设置准备完成监听器
-            mp.setOnPreparedListener { preparedPlayer ->
-                Log.d(TAG, "playSound: MediaPlayer prepared, starting playback. URI: $soundUri")
-                try {
-                    preparedPlayer.start()
-                } catch (ise: IllegalStateException) {
-                    Log.e(TAG, "playSound: MediaPlayer start failed after prepare. URI: $soundUri", ise)
-                    preparedPlayer.release()
-                    if (this.mediaPlayer == preparedPlayer) {
-                        this.mediaPlayer = null
-                        this.currentSoundType = null
-                    }
-                }
-            }
-            
-            // 设置播放完成监听器
-            mp.setOnCompletionListener { completedPlayer ->
-                Log.d(TAG, "playSound: MediaPlayer playback completed. URI: $soundUri")
-                completedPlayer.release()
-                if (this.mediaPlayer == completedPlayer) {
-                    this.mediaPlayer = null
-                    this.currentSoundType = null
-                }
-                
-                // 恢复原始音频模式
-                if (audioManager.mode != originalMode) {
-                    audioManager.mode = originalMode
-                    Log.d(TAG, "playSound: Restored audio mode to $originalMode")
-                }
-                
-                // 如果我们启用了 SCO 但原来没有启用，则停止它
-                if (audioManager.isBluetoothScoOn && !originalBluetoothScoOn) {
-                    Log.d(TAG, "playSound: SCO was turned on by us, stopping SCO.")
-                    audioManager.isBluetoothScoOn = false
-                    audioManager.stopBluetoothSco()
-                }
-            }
-            
-            // 开始异步准备
-            Log.d(TAG, "playSound: Preparing MediaPlayer asynchronously. URI: $soundUri")
-            mp.prepareAsync()
-            
-        } catch (e: Exception) {
-            Log.e(TAG, "playSound: Exception during MediaPlayer setup for URI: $soundUri", e)
-            releaseMediaPlayer()
-        }
-    }
-
-    /**
-     * 释放 MediaPlayer 资源
-     */
-    private fun releaseMediaPlayer() {
-        mediaPlayer?.let {
-            if (it.isPlaying) {
-                try {
-                    it.stop()
-                } catch (e: IllegalStateException) {
-                    Log.e(TAG, "releaseMediaPlayer: Error stopping MediaPlayer", e)
-                }
-            }
-            it.release()
-            mediaPlayer = null
-            currentSoundType = null
-            Log.d(TAG, "releaseMediaPlayer: MediaPlayer released")
-        }
+        return (studyDuration * 0.2).roundToInt().coerceAtLeast(5)
     }
     
     override fun onDestroy() {
-        stopTimers()
-        releaseMediaPlayer()
-        wakeLock?.let {
-            if (it.isHeld) {
-                it.release()
-                Log.d(TAG, "Wakelock released")
-            }
+        super.onDestroy()
+        
+        // 释放 WakeLock
+        if (wakeLock?.isHeld == true) {
+            wakeLock?.release()
         }
-        if (audioManager.isBluetoothScoOn) { 
-            Log.d(TAG, "onDestroy: Stopping Bluetooth SCO")
-            audioManager.stopBluetoothSco()
-            audioManager.isBluetoothScoOn = false
-            audioManager.mode = AudioManager.MODE_NORMAL
+        
+        // 停止计时器
+        timerManager.stopAllTimers()
+        
+        // 释放音频资源
+        audioManager.releaseMediaPlayer()
+        
+        if (BuildConfig.DEBUG) {
+            Log.d(TAG, "Service destroyed")
         }
-        stopForeground(true)
     }
 }
