@@ -217,9 +217,9 @@ class StudyTimerService : Service() {
         // Create notification channel
         createNotificationChannel()
 
-        // Initialize durations immediately (they depend on testMode which might be set later,
-        // but default values are fine for initial _elapsedTimeInFullCycleMillis setup for IDLE)
-        updateCurrentDurationsInternal() 
+        // 初始化时计算总周期时长，确保在 IDLE 状态下显示正确的总周期时长
+        // 这里的默认值适用于初始的 _elapsedTimeInFullCycleMillis 设置
+        updateCurrentDurationsInternal()
 
         // Initialize wake lock
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
@@ -291,9 +291,11 @@ class StudyTimerService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val name = "Study Timer"
             val descriptionText = "Notifications for Study Timer"
-            val importance = NotificationManager.IMPORTANCE_HIGH
+            val importance = NotificationManager.IMPORTANCE_LOW // 降低重要性级别，避免声音干扰
             val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
                 description = descriptionText
+                setSound(null, null) // 禁用通知声音
+                enableVibration(false) // 禁用振动
             }
             
             val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -314,6 +316,9 @@ class StudyTimerService : Service() {
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
+            .setSound(null) // 禁用通知声音
+            .setVibrate(null) // 禁用振动
+            .setDefaults(0) // 清除所有默认设置
             .build()
     }
     
@@ -449,7 +454,7 @@ class StudyTimerService : Service() {
         
         updateNotification("Eye rest for 10 seconds...")
         
-        playAlarmSound() // 使用闹钟声音提示眼部休息开始
+        // 不在这里播放闹钟声音，因为已经在 triggerAlarm 中播放了
         
         
         eyeRestTimer = object : CountDownTimer(EYE_REST_TIME_MS, 1000) {
@@ -541,9 +546,9 @@ class StudyTimerService : Service() {
         
         // 如果当前是 IDLE 状态，更新剩余时间和周期时间显示
         if (_timerState.value == TimerState.IDLE) {
-            _timeLeftInSession.value = mStudyDurationMillis // 显示潜在的学习时间
-            _elapsedTimeInFullCycleMillis.value = mTotalCycleDurationMillis // 显示完整进度
-            Log.d(TAG, "Updated IDLE state time display: timeLeft=${_timeLeftInSession.value}ms, elapsedTime=${_elapsedTimeInFullCycleMillis.value}ms")
+            _timeLeftInSession.value = mTotalCycleDurationMillis // 显示总周期时长（学习+休息）
+            _elapsedTimeInFullCycleMillis.value = 0L // 重置进度
+            Log.d(TAG, "Updated IDLE state time display: timeLeft=${_timeLeftInSession.value}ms (total cycle duration), elapsedTime=${_elapsedTimeInFullCycleMillis.value}ms")
         }
     }
  
@@ -929,7 +934,7 @@ class StudyTimerService : Service() {
         eyeRestTimer = null
         
         _timerState.value = TimerState.IDLE
-        _timeLeftInSession.value = 0
+        _timeLeftInSession.value = mTotalCycleDurationMillis // 设置为总周期时长，而不是0
         _timeUntilNextAlarm.value = 0
         
         // Release wake lock if held

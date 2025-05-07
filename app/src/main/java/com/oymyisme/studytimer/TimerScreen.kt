@@ -97,9 +97,10 @@ fun StudyTimerApp(
                         progress = {
                             val currentTotalCycleDurationMillis = when {
                                 testModeEnabled && TestMode.isEnabled -> {
-                                    // 测试模式下的总周期时长：30秒学习 + 10秒休息 = 40秒
-                                    // 直接使用确切的毫秒值，而不是通过常量计算，避免精度问题
-                                    30 * 1000L + 10 * 1000L // 30秒学习 + 10秒休息
+                                    // 使用 TestMode 类中定义的常量计算总周期时长
+                                    val studyTimeMs = (TestMode.TEST_STUDY_DURATION_MIN * 60 * 1000).toLong()
+                                    val breakTimeMs = (TestMode.TEST_BREAK_DURATION_MIN * 60 * 1000).toLong()
+                                    studyTimeMs + breakTimeMs
                                 }
                                 else -> {
                                     studyDurationMin * 60 * 1000L + breakDurationMin * 60 * 1000L
@@ -116,7 +117,7 @@ fun StudyTimerApp(
                                         1f // Avoid division by zero, show full if total is somehow zero
                                     }
                                 }
-                                StudyTimerService.TimerState.IDLE -> 1f // Full circle when idle
+                                StudyTimerService.TimerState.IDLE -> 0f // Empty circle when idle, consistent with reset progress
                             }
                         },
                         modifier = Modifier.size(200.dp),
@@ -125,8 +126,18 @@ fun StudyTimerApp(
                         trackColor = MaterialTheme.colorScheme.secondaryContainer,
                     )
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        // 在测试模式下，如果是 IDLE 状态，计算并显示总周期时长
+                        val displayTime = if (timerState == StudyTimerService.TimerState.IDLE && testModeEnabled && TestMode.isEnabled) {
+                            // 使用 TestMode 类中定义的常量计算总周期时长
+                            val studyTimeMs = (TestMode.TEST_STUDY_DURATION_MIN * 60 * 1000).toLong()
+                            val breakTimeMs = (TestMode.TEST_BREAK_DURATION_MIN * 60 * 1000).toLong()
+                            studyTimeMs + breakTimeMs
+                        } else {
+                            timeLeftInSession
+                        }
+                        
                         Text(
-                            text = formatTime(timeLeftInSession),
+                            text = formatTime(displayTime),
                             fontSize = 32.sp,
                             fontWeight = FontWeight.Bold
                         )
