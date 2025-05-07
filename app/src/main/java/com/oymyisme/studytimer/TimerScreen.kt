@@ -95,14 +95,16 @@ fun StudyTimerApp(
                 Box(contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(
                         progress = {
+                            // 计算总周期时长（学习+休息）
                             val currentTotalCycleDurationMillis = when {
                                 testModeEnabled && TestMode.isEnabled -> {
-                                    // 使用 TestMode 类中定义的常量计算总周期时长
+                                    // 测试模式下的总周期时长
                                     val studyTimeMs = (TestMode.TEST_STUDY_DURATION_MIN * 60 * 1000).toLong()
                                     val breakTimeMs = (TestMode.TEST_BREAK_DURATION_MIN * 60 * 1000).toLong()
                                     studyTimeMs + breakTimeMs
                                 }
                                 else -> {
+                                    // 非测试模式下的总周期时长
                                     studyDurationMin * 60 * 1000L + breakDurationMin * 60 * 1000L
                                 }
                             }
@@ -126,12 +128,17 @@ fun StudyTimerApp(
                         trackColor = MaterialTheme.colorScheme.secondaryContainer,
                     )
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        // 在测试模式下，如果是 IDLE 状态，计算并显示总周期时长
-                        val displayTime = if (timerState == StudyTimerService.TimerState.IDLE && testModeEnabled && TestMode.isEnabled) {
-                            // 使用 TestMode 类中定义的常量计算总周期时长
-                            val studyTimeMs = (TestMode.TEST_STUDY_DURATION_MIN * 60 * 1000).toLong()
-                            val breakTimeMs = (TestMode.TEST_BREAK_DURATION_MIN * 60 * 1000).toLong()
-                            studyTimeMs + breakTimeMs
+                        // 在 IDLE 状态下，计算并显示总周期时长（学习+休息）
+                        val displayTime = if (timerState == StudyTimerService.TimerState.IDLE) {
+                            if (testModeEnabled && TestMode.isEnabled) {
+                                // 测试模式下的总周期时长
+                                val studyTimeMs = (TestMode.TEST_STUDY_DURATION_MIN * 60 * 1000).toLong()
+                                val breakTimeMs = (TestMode.TEST_BREAK_DURATION_MIN * 60 * 1000).toLong()
+                                studyTimeMs + breakTimeMs
+                            } else {
+                                // 非测试模式下的总周期时长
+                                studyDurationMin * 60 * 1000L + breakDurationMin * 60 * 1000L
+                            }
                         } else {
                             timeLeftInSession
                         }
@@ -180,7 +187,7 @@ fun StudyTimerApp(
                             stringResource(R.string.state_eye_rest)
 
                         StudyTimerService.TimerState.IDLE -> {
-                            if (testModeEnabled) {
+                            if (testModeEnabled && TestMode.isEnabled) {
                                 // 测试模式下显示测试时间
                                 stringResource(
                                     R.string.state_idle_test,
