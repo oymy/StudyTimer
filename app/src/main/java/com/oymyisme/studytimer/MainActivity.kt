@@ -140,6 +140,7 @@ class MainActivity : ComponentActivity() {
                     val serviceTimerState = studyTimerService?.timerState?.collectAsState()
                     val serviceTimeLeftInSession = studyTimerService?.timeLeftInSession?.collectAsState()
                     val serviceTimeUntilNextAlarm = studyTimerService?.timeUntilNextAlarm?.collectAsState()
+                    val serviceElapsedTimeInFullCycle = studyTimerService?.elapsedTimeInFullCycleMillis?.collectAsState()
                     
                     val uiTimerStateState = uiTimerState.collectAsState()
                     val uiTimeLeftInSessionState = uiTimeLeftInSession.collectAsState()
@@ -149,6 +150,7 @@ class MainActivity : ComponentActivity() {
                     val timerState = serviceTimerState?.value ?: uiTimerStateState.value
                     val timeLeftInSession = serviceTimeLeftInSession?.value ?: uiTimeLeftInSessionState.value
                     val timeUntilNextAlarm = serviceTimeUntilNextAlarm?.value ?: uiTimeUntilNextAlarmState.value
+                    val elapsedTimeInFullCycle = serviceElapsedTimeInFullCycle?.value ?: 0L
                     val showNextAlarm = showNextAlarmTime.collectAsState().value
                     // Collect current settings values
                     val currentStudyDuration = _studyDurationMin.collectAsState().value
@@ -161,6 +163,7 @@ class MainActivity : ComponentActivity() {
                         timerState = timerState,
                         timeLeftInSession = timeLeftInSession,
                         timeUntilNextAlarm = timeUntilNextAlarm,
+                        elapsedTimeInFullCycle = elapsedTimeInFullCycle,
                         showNextAlarmTime = showNextAlarm,
                         studyDurationMin = currentStudyDuration, // Pass setting
                         minAlarmIntervalMin = currentMinInterval, // Pass setting
@@ -190,43 +193,28 @@ class MainActivity : ComponentActivity() {
     private var timerStateJob: Job? = null
     private var timeLeftJob: Job? = null
     private var alarmTimeJob: Job? = null
+    private var elapsedTimeInFullCycleJob: Job? = null
     
     private fun updateUIFromService() {
         // Cancel any existing collectors
         timerStateJob?.cancel()
         timeLeftJob?.cancel()
         alarmTimeJob?.cancel()
+        elapsedTimeInFullCycleJob?.cancel()
         
         // Update local UI state from service when connected
         studyTimerService?.let { service ->
-            // Collect timer state
             timerStateJob = lifecycleScope.launch {
-                service.timerState.collect { state ->
-                    _uiTimerState.value = state
-                    
-                    // If we just entered eye rest state, show a toast notification
-                    if (state == StudyTimerService.TimerState.EYE_REST) {
-                        Toast.makeText(
-                            this@MainActivity,
-                            "Rest your eyes for 10 seconds",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                }
+                service.timerState.collect { uiTimerState.value = it }
             }
-            
-            // Collect time left in session
             timeLeftJob = lifecycleScope.launch {
-                service.timeLeftInSession.collect { time ->
-                    _uiTimeLeftInSession.value = time
-                }
+                service.timeLeftInSession.collect { uiTimeLeftInSession.value = it }
             }
-            
-            // Collect time until next alarm
             alarmTimeJob = lifecycleScope.launch {
-                service.timeUntilNextAlarm.collect { time ->
-                    _uiTimeUntilNextAlarm.value = time
-                }
+                service.timeUntilNextAlarm.collect { uiTimeUntilNextAlarm.value = it }
+            }
+            elapsedTimeInFullCycleJob = lifecycleScope.launch {
+                service.elapsedTimeInFullCycleMillis.collect { /* We don't have a local UI state for this, it's directly passed */ }
             }
         }
     }
@@ -245,14 +233,14 @@ class MainActivity : ComponentActivity() {
     private val _eyeRestSoundType = MutableStateFlow(SoundOptions.DEFAULT_EYE_REST_SOUND_TYPE) // 默认休息结束提示音
     
     // 测试模式状态
-    private val _testModeEnabled = MutableStateFlow(false)
+    private val _testModeEnabled = MutableStateFlow(true) // 默认开启测试模式，与 StudyTimerService 保持一致
     
     // Navigation state flow
     private val _showSettings = MutableStateFlow(false)
     
-    private val uiTimerState: StateFlow<StudyTimerService.TimerState> = _uiTimerState
-    private val uiTimeLeftInSession: StateFlow<Long> = _uiTimeLeftInSession
-    private val uiTimeUntilNextAlarm: StateFlow<Long> = _uiTimeUntilNextAlarm
+    private val uiTimerState: MutableStateFlow<StudyTimerService.TimerState> = _uiTimerState
+    private val uiTimeLeftInSession: MutableStateFlow<Long> = _uiTimeLeftInSession
+    private val uiTimeUntilNextAlarm: MutableStateFlow<Long> = _uiTimeUntilNextAlarm
     private val showNextAlarmTime: StateFlow<Boolean> = _showNextAlarmTime
     private val alarmSoundType: StateFlow<String> = _alarmSoundType
     private val eyeRestSoundType: StateFlow<String> = _eyeRestSoundType

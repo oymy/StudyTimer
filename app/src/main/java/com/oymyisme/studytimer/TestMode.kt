@@ -13,30 +13,30 @@ object TestMode {
         get() = BuildConfig.ENABLE_TEST_MODE
     
     /**
-     * 测试模式的学习时长（1分钟）
+     * 测试模式的学习时长（30秒）
      */
-    const val TEST_STUDY_DURATION_MIN = 1
+    const val TEST_STUDY_DURATION_MIN = 0.5f
     
     /**
-     * 测试模式的最小闹钟间隔（20秒，以分钟为单位表示）
+     * 测试模式的最小闹钟间隔（10秒，以分钟为单位表示）
      */
-    const val TEST_MIN_ALARM_INTERVAL_MIN = 20.0f / 60.0f
+    const val TEST_MIN_ALARM_INTERVAL_MIN = 10.0f / 60.0f
     
     /**
-     * 测试模式的最大闹钟间隔（20秒，以分钟为单位表示）
+     * 测试模式的最大闹钟间隔（10秒，以分钟为单位表示）
      */
-    const val TEST_MAX_ALARM_INTERVAL_MIN = 20.0f / 60.0f
+    const val TEST_MAX_ALARM_INTERVAL_MIN = 10.0f / 60.0f
     
     /**
-     * 测试模式的休息时长（20秒）
+     * 测试模式的休息时长（10秒）
      */
-    const val TEST_BREAK_DURATION_MIN = 20.0f / 60.0f
+    const val TEST_BREAK_DURATION_MIN = 10.0f / 60.0f
     
     /**
      * 获取测试模式的学习时长（分钟）
      */
     fun getStudyDurationMin(): Int {
-        return TEST_STUDY_DURATION_MIN
+        return 0 // 0分钟，实际使用 30 秒
     }
     
     /**

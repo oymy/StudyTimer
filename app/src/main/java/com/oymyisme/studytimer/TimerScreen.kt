@@ -34,6 +34,7 @@ fun StudyTimerApp(
     timerState: StudyTimerService.TimerState,
     timeLeftInSession: Long,
     timeUntilNextAlarm: Long,
+    elapsedTimeInFullCycle: Long,
     showNextAlarmTime: Boolean,
     studyDurationMin: Int,
     minAlarmIntervalMin: Int,
@@ -72,43 +73,29 @@ fun StudyTimerApp(
                 // Timer Display (CircularProgressIndicator + Text)
                 Box(contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(
-                        progress = { // Full circle when idle
-                            // For eye rest, show progress decreasing from full
-                            // Avoid division by zero, progress is 1f anyway
-                            // Calculate progress based on the current state and its duration
-                            // Calculate progress based on the current state and its duration
-                            val totalDurationMs = when (timerState) {
-                                StudyTimerService.TimerState.STUDYING -> {
-                                    if (testModeEnabled && TestMode.isEnabled) {
-                                        // 测试模式下使用 1 分钟
-                                        TestMode.TEST_STUDY_DURATION_MIN * 60 * 1000L
+                        progress = {
+                            val currentTotalCycleDurationMillis = when {
+                                testModeEnabled && TestMode.isEnabled -> {
+                                    // 测试模式下的总周期时长：30秒学习 + 10秒休息 = 40秒
+                                    // 直接使用确切的毫秒值，而不是通过常量计算，避免精度问题
+                                    30 * 1000L + 10 * 1000L // 30秒学习 + 10秒休息
+                                }
+                                else -> {
+                                    studyDurationMin * 60 * 1000L + breakDurationMin * 60 * 1000L
+                                }
+                            }
+
+                            when (timerState) {
+                                StudyTimerService.TimerState.STUDYING,
+                                StudyTimerService.TimerState.BREAK,
+                                StudyTimerService.TimerState.EYE_REST -> { // 修改：在眼部休息期间也使用相同的进度计算
+                                    if (currentTotalCycleDurationMillis > 0) {
+                                        (elapsedTimeInFullCycle.toFloat() / currentTotalCycleDurationMillis.toFloat()).coerceIn(0f, 1f)
                                     } else {
-                                        studyDurationMin * 60 * 1000L
+                                        1f // Avoid division by zero, show full if total is somehow zero
                                     }
                                 }
-
-                                StudyTimerService.TimerState.BREAK -> {
-                                    if (testModeEnabled && TestMode.isEnabled) {
-                                        // 测试模式下使用 20 秒
-                                        20 * 1000L // 20秒
-                                    } else {
-                                        breakDurationMin * 60 * 1000L
-                                    }
-                                }
-
-                                StudyTimerService.TimerState.EYE_REST -> StudyTimerService.EYE_REST_TIME_MS
-                                StudyTimerService.TimerState.IDLE -> 1L // Avoid division by zero, progress is 1f anyway
-                            }// Full circle when idle
-                            // For eye rest, show progress decreasing from full
-                            // Avoid division by zero, progress is 1f anyway
-                            // Calculate progress based on the current state and its duration
-                            if (totalDurationMs > 0 && (timerState != StudyTimerService.TimerState.IDLE && timerState != StudyTimerService.TimerState.EYE_REST)) {
-                                (timeLeftInSession.toFloat() / totalDurationMs.toFloat())
-                            } else if (timerState == StudyTimerService.TimerState.EYE_REST) {
-                                // For eye rest, show progress decreasing from full
-                                (timeLeftInSession.toFloat() / StudyTimerService.EYE_REST_TIME_MS.toFloat())
-                            } else {
-                                1f // Full circle when idle
+                                StudyTimerService.TimerState.IDLE -> 1f // Full circle when idle
                             }
                         },
                         modifier = Modifier.size(200.dp),
@@ -199,7 +186,7 @@ fun StudyTimerApp(
                                     fontWeight = FontWeight.Medium
                                 )
                                 Text(
-                                    text = "学习：1分钟 闹钟：20秒",
+                                    text = "学习：30秒 闹钟：10秒 休息：10秒",
                                     fontSize = 12.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -332,7 +319,7 @@ fun StudyTimerApp(
     }
 
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "Timer Screen - Idle")
 @Composable
 fun TimerScreenPreviewIdle() {
     StudyTimerTheme {
@@ -340,7 +327,8 @@ fun TimerScreenPreviewIdle() {
             timerState = StudyTimerService.TimerState.IDLE,
             timeLeftInSession = 90 * 60 * 1000L,
             timeUntilNextAlarm = 0L,
-            showNextAlarmTime = true,
+            elapsedTimeInFullCycle = 110 * 60 * 1000L, // For IDLE, typically means full cycle completed or ready
+            showNextAlarmTime = false,
             studyDurationMin = 90,
             minAlarmIntervalMin = 3,
             maxAlarmIntervalMin = 5,
@@ -354,14 +342,15 @@ fun TimerScreenPreviewIdle() {
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "Timer Screen - Studying")
 @Composable
 fun TimerScreenPreviewStudying() {
     StudyTimerTheme {
         StudyTimerApp(
             timerState = StudyTimerService.TimerState.STUDYING,
-            timeLeftInSession = 85 * 60 * 1000L,
+            timeLeftInSession = 45 * 60 * 1000L, // Halfway through 90 min study
             timeUntilNextAlarm = 2 * 60 * 1000L,
+            elapsedTimeInFullCycle = 45 * 60 * 1000L, // Halfway through study part of full cycle
             showNextAlarmTime = true,
             studyDurationMin = 90,
             minAlarmIntervalMin = 3,
@@ -376,42 +365,48 @@ fun TimerScreenPreviewStudying() {
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "Timer Screen - Break")
 @Composable
 fun TimerScreenPreviewBreak() {
     StudyTimerTheme {
         StudyTimerApp(
             timerState = StudyTimerService.TimerState.BREAK,
-            timeLeftInSession = 15 * 60 * 1000L,
+            timeLeftInSession = 10 * 60 * 1000L, // Halfway through 20 min break
             timeUntilNextAlarm = 0L,
-            showNextAlarmTime = true,
-            studyDurationMin = 90, 
-            minAlarmIntervalMin = 3, 
-            maxAlarmIntervalMin = 5, 
-            breakDurationMin = 20, 
+            elapsedTimeInFullCycle = (90 * 60 * 1000L) + (10 * 60 * 1000L), // Study done + halfway through break
+            showNextAlarmTime = false,
+            studyDurationMin = 90,
+            minAlarmIntervalMin = 3,
+            maxAlarmIntervalMin = 5,
+            breakDurationMin = 20,
+            testModeEnabled = false,
             onStartClick = {}, 
             onStopClick = {}, 
-            onSettingsClick = {}
+            onSettingsClick = {},
+            onTestModeToggle = {}
         )
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "Timer Screen - Eye Rest")
 @Composable
 fun TimerScreenPreviewEyeRest() {
     StudyTimerTheme {
         StudyTimerApp(
             timerState = StudyTimerService.TimerState.EYE_REST,
-            timeLeftInSession = 5 * 1000L, // Show remaining eye rest time
+            timeLeftInSession = 5 * 1000L, // Halfway through 10s eye rest
             timeUntilNextAlarm = 0L,
-            showNextAlarmTime = true,
-            studyDurationMin = 90, 
-            minAlarmIntervalMin = 3, 
-            maxAlarmIntervalMin = 5, 
-            breakDurationMin = 20, 
+            elapsedTimeInFullCycle = 30 * 60 * 1000L, // Example: eye rest during a study session
+            showNextAlarmTime = false,
+            studyDurationMin = 90,
+            minAlarmIntervalMin = 3,
+            maxAlarmIntervalMin = 5,
+            breakDurationMin = 20,
+            testModeEnabled = false,
             onStartClick = {}, 
             onStopClick = {}, 
-            onSettingsClick = {}
+            onSettingsClick = {},
+            onTestModeToggle = {}
         )
     }
 }
