@@ -31,6 +31,7 @@ android {
             )
             // 在发布版本中禁用测试功能
             buildConfigField("boolean", "ENABLE_TEST_MODE", "false")
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
     compileOptions {
