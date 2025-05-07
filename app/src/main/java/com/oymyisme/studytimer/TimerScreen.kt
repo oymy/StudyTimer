@@ -1,5 +1,8 @@
 package com.oymyisme.studytimer
 
+import android.util.Log
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -7,6 +10,8 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -22,6 +27,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogProperties
 import java.util.concurrent.TimeUnit
 import com.oymyisme.studytimer.ui.theme.StudyTimerTheme
 import java.util.Locale
@@ -41,11 +47,25 @@ fun StudyTimerApp(
     maxAlarmIntervalMin: Int,
     breakDurationMin: Int,
     testModeEnabled: Boolean = false,
+    cycleCompleted: Boolean = false,
     onStartClick: () -> Unit,
     onStopClick: () -> Unit,
     onSettingsClick: () -> Unit,
-    onTestModeToggle: (Boolean) -> Unit = {}
+    onTestModeToggle: (Boolean) -> Unit = {},
+    onContinueNextCycle: () -> Unit = {},
+    onReturnToMain: () -> Unit = {}
 ) {
+    // 周期完成对话框
+    if (cycleCompleted) {
+        Log.d("TimerScreen", "Showing cycle completed dialog, cycleCompleted=$cycleCompleted")
+        Box(modifier = Modifier.fillMaxSize()) {
+            CycleCompletedDialog(
+                onContinueNextCycle = onContinueNextCycle,
+                onReturnToMain = onReturnToMain
+            )
+        }
+    }
+    
     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
         Surface(
             modifier = Modifier
@@ -303,20 +323,21 @@ fun StudyTimerApp(
     }
 
 }
-    /**
-     * Helper function to format time in milliseconds to HH:MM:SS or MM:SS format.
-     */
-    fun formatTime(millis: Long): String {
-        val hours = TimeUnit.MILLISECONDS.toHours(millis)
-        val minutes = TimeUnit.MILLISECONDS.toMinutes(millis) % 60
-        val seconds = TimeUnit.MILLISECONDS.toSeconds(millis) % 60
 
-        return if (hours > 0) {
-            String.format(Locale.ENGLISH, "%02d:%02d:%02d", hours, minutes, seconds)
-        } else {
-            String.format(Locale.ENGLISH, "%02d:%02d", minutes, seconds)
-        }
+/**
+ * Helper function to format time in milliseconds to HH:MM:SS or MM:SS format.
+ */
+fun formatTime(millis: Long): String {
+    val hours = TimeUnit.MILLISECONDS.toHours(millis)
+    val minutes = TimeUnit.MILLISECONDS.toMinutes(millis) % 60
+    val seconds = TimeUnit.MILLISECONDS.toSeconds(millis) % 60
+
+    return if (hours > 0) {
+        String.format(Locale.ENGLISH, "%02d:%02d:%02d", hours, minutes, seconds)
+    } else {
+        String.format(Locale.ENGLISH, "%02d:%02d", minutes, seconds)
     }
+}
 
 
 @Preview(showBackground = true, name = "Timer Screen - Idle")
@@ -334,10 +355,13 @@ fun TimerScreenPreviewIdle() {
             maxAlarmIntervalMin = 5,
             breakDurationMin = 20,
             testModeEnabled = false,
+            cycleCompleted = false,
             onStartClick = {}, 
             onStopClick = {}, 
             onSettingsClick = {},
-            onTestModeToggle = {}
+            onTestModeToggle = {},
+            onContinueNextCycle = {},
+            onReturnToMain = {}
         )
     }
 }
@@ -357,10 +381,13 @@ fun TimerScreenPreviewStudying() {
             maxAlarmIntervalMin = 5,
             breakDurationMin = 20,
             testModeEnabled = false,
+            cycleCompleted = false,
             onStartClick = {}, 
             onStopClick = {}, 
             onSettingsClick = {},
-            onTestModeToggle = {}
+            onTestModeToggle = {},
+            onContinueNextCycle = {},
+            onReturnToMain = {}
         )
     }
 }
@@ -380,10 +407,13 @@ fun TimerScreenPreviewBreak() {
             maxAlarmIntervalMin = 5,
             breakDurationMin = 20,
             testModeEnabled = false,
+            cycleCompleted = false,
             onStartClick = {}, 
             onStopClick = {}, 
             onSettingsClick = {},
-            onTestModeToggle = {}
+            onTestModeToggle = {},
+            onContinueNextCycle = {},
+            onReturnToMain = {}
         )
     }
 }
@@ -403,10 +433,107 @@ fun TimerScreenPreviewEyeRest() {
             maxAlarmIntervalMin = 5,
             breakDurationMin = 20,
             testModeEnabled = false,
+            cycleCompleted = false,
             onStartClick = {}, 
             onStopClick = {}, 
             onSettingsClick = {},
-            onTestModeToggle = {}
+            onTestModeToggle = {},
+            onContinueNextCycle = {},
+            onReturnToMain = {}
         )
     }
+}
+
+@Preview(showBackground = true, name = "Cycle Completed Dialog")
+@Composable
+fun CycleCompletedDialogPreview() {
+    StudyTimerTheme {
+        CycleCompletedDialog(
+            onContinueNextCycle = {},
+            onReturnToMain = {}
+        )
+    }
+}
+
+/**
+ * 周期完成对话框
+ */
+@Composable
+fun CycleCompletedDialog(
+    onContinueNextCycle: () -> Unit,
+    onReturnToMain: () -> Unit
+) {
+    // 使用标准的 AlertDialog，确保在最上层显示
+    AlertDialog(
+        onDismissRequest = { /* 不允许点击外部关闭 */ },
+        title = {
+            Text(
+                text = "恭喜完成学习周期！",
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "你已经完成了一个完整的学习周期，包括学习和休息时间。",
+                    textAlign = TextAlign.Center,
+                    fontSize = 16.sp
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Text(
+                    text = "你想继续下一个周期还是返回主界面？",
+                    textAlign = TextAlign.Center,
+                    fontSize = 16.sp
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onContinueNextCycle,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                ),
+                modifier = Modifier.fillMaxWidth(0.45f)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Refresh, contentDescription = "Continue")
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("继续学习")
+                }
+            }
+        },
+        dismissButton = {
+            OutlinedButton(
+                onClick = onReturnToMain,
+                modifier = Modifier.fillMaxWidth(0.45f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Home, contentDescription = "Return")
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("返回")
+                }
+            }
+        },
+        containerColor = MaterialTheme.colorScheme.surface,
+        titleContentColor = MaterialTheme.colorScheme.primary,
+        shape = RoundedCornerShape(16.dp),
+        // 添加遮罩背景色
+        properties = DialogProperties(
+            dismissOnBackPress = false,
+            dismissOnClickOutside = false,
+            usePlatformDefaultWidth = false
+        ),
+        modifier = Modifier
+            .fillMaxWidth(0.9f)
+            .wrapContentHeight()
+    )
 }

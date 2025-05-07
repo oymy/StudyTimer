@@ -95,6 +95,10 @@ class StudyTimerService : Service() {
     private val _elapsedTimeInFullCycleMillis = MutableStateFlow(0L)
     val elapsedTimeInFullCycleMillis: StateFlow<Long> = _elapsedTimeInFullCycleMillis.asStateFlow()
     
+    // 新增状态流，用于通知 UI 周期已完成
+    private val _cycleCompleted = MutableStateFlow(false)
+    val cycleCompleted: StateFlow<Boolean> = _cycleCompleted.asStateFlow()
+    
     // Timers
     private var sessionTimer: CountDownTimer? = null
     private var alarmTimer: CountDownTimer? = null
@@ -313,7 +317,19 @@ class StudyTimerService : Service() {
             .build()
     }
     
+    /**
+     * 重置周期完成状态
+     * 当用户选择继续下一个周期时调用
+     */
+    fun resetCycleCompleted() {
+        _cycleCompleted.value = false
+        Log.d(TAG, "Cycle completed state reset")
+    }
+    
     private fun startNextSessionPhase(isStudySession: Boolean) {
+        // 开始新周期时重置周期完成状态
+        _cycleCompleted.value = false
+        
         Log.d(TAG, "Starting next session phase. Is Study: $isStudySession, Current State: ${_timerState.value}")
         sessionTimer?.cancel() // Cancel any existing session timer
         
@@ -363,6 +379,16 @@ class StudyTimerService : Service() {
                     playEyeRestCompleteSound() // Notify end of break
                     vibrate(VIBRATE_PATTERN_ALARM, -1)
                     _timerState.value = TimerState.IDLE
+                    
+                    // 增强周期完成状态设置，确保对话框显示
+                    _cycleCompleted.value = true
+                    Log.d(TAG, "Cycle completed, notifying UI. _cycleCompleted.value = ${_cycleCompleted.value}")
+                    
+                    // 延迟一秒再次确认状态已设置
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        Log.d(TAG, "Checking cycle completed state after delay: ${_cycleCompleted.value}")
+                    }, 1000)
+                    
                     // After break, go to IDLE, user can start a new session.
                     updateNotification("Timer finished. Ready to start a new session.")
                     // Update durations and reset timeLeft for IDLE state to show potential study time

@@ -170,6 +170,7 @@ class MainActivity : ComponentActivity() {
                         maxAlarmIntervalMin = currentMaxInterval, // Pass setting
                         breakDurationMin = currentBreakDuration, // Pass calculated break duration
                         testModeEnabled = _testModeEnabled.value, // Pass test mode state
+                        cycleCompleted = cycleCompleted.collectAsState().value, // 传递周期完成状态
                         onStartClick = { startStudySession() },
                         onStopClick = { stopStudySession() },
                         onSettingsClick = { _showSettings.value = true }, // Navigate to settings
@@ -182,7 +183,18 @@ class MainActivity : ComponentActivity() {
                                 if (enabled) "测试模式已启用" else "测试模式已关闭",
                                 Toast.LENGTH_SHORT
                             ).show()
-                        } // Handle test mode toggle
+                        }, // Handle test mode toggle
+                        onContinueNextCycle = {
+                            // 用户选择继续下一个周期
+                            _cycleCompleted.value = false
+                            studyTimerService?.resetCycleCompleted()
+                            startStudySession()
+                        },
+                        onReturnToMain = {
+                            // 用户选择返回主界面
+                            _cycleCompleted.value = false
+                            studyTimerService?.resetCycleCompleted()
+                        }
                     )
                 }
             }
@@ -194,6 +206,7 @@ class MainActivity : ComponentActivity() {
     private var timeLeftJob: Job? = null
     private var alarmTimeJob: Job? = null
     private var elapsedTimeInFullCycleJob: Job? = null
+    private var cycleCompletedJob: Job? = null
     
     private fun updateUIFromService() {
         // Cancel any existing collectors
@@ -201,6 +214,7 @@ class MainActivity : ComponentActivity() {
         timeLeftJob?.cancel()
         alarmTimeJob?.cancel()
         elapsedTimeInFullCycleJob?.cancel()
+        cycleCompletedJob?.cancel()
         
         // Update local UI state from service when connected
         studyTimerService?.let { service ->
@@ -215,6 +229,20 @@ class MainActivity : ComponentActivity() {
             }
             elapsedTimeInFullCycleJob = lifecycleScope.launch {
                 service.elapsedTimeInFullCycleMillis.collect { /* We don't have a local UI state for this, it's directly passed */ }
+            }
+            cycleCompletedJob = lifecycleScope.launch {
+                service.cycleCompleted.collect { newValue ->
+                    _cycleCompleted.value = newValue
+                    // 添加调试信息，显示周期完成状态变化
+                    if (newValue) {
+                        Log.d(TAG, "Cycle completed state changed to TRUE in MainActivity")
+                        Toast.makeText(
+                            this@MainActivity,
+                            "周期完成状态已更新！应该显示对话框",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
             }
         }
     }
@@ -235,6 +263,9 @@ class MainActivity : ComponentActivity() {
     // 测试模式状态
     private val _testModeEnabled = MutableStateFlow(true) // 默认开启测试模式，与 StudyTimerService 保持一致
     
+    // 周期完成状态，用于显示结束对话框
+    private val _cycleCompleted = MutableStateFlow(false)
+    
     // Navigation state flow
     private val _showSettings = MutableStateFlow(false)
     
@@ -245,6 +276,7 @@ class MainActivity : ComponentActivity() {
     private val alarmSoundType: StateFlow<String> = _alarmSoundType
     private val eyeRestSoundType: StateFlow<String> = _eyeRestSoundType
     private val testModeEnabled: StateFlow<Boolean> = _testModeEnabled
+    private val cycleCompleted: StateFlow<Boolean> = _cycleCompleted
     
     // Function to calculate break duration based on study duration
     private fun calculateBreakDuration(studyDuration: Int): Int {
