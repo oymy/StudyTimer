@@ -678,17 +678,52 @@ class StudyTimerService : Service() {
 
             if (headsetConnected) {
                 Log.d(TAG, "playAlarmSound: Headset connected, attempting to route audio to headset.")
-                if (audioManager.isBluetoothScoAvailableOffCall) {
-                    Log.d(TAG, "playAlarmSound: Bluetooth SCO available. Starting SCO.")
-                    audioManager.startBluetoothSco()
-                    Handler(Looper.getMainLooper()).postDelayed({
-                        Log.d(TAG, "playAlarmSound: Attempted to start SCO. isBluetoothScoOn: ${audioManager.isBluetoothScoOn}")
-                    }, 1000) 
+                
+                // 先检查是否有蓝牙耳机
+                val hasBluetoothHeadset = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    val devices = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+                    devices.any { device -> 
+                        device.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP || 
+                        device.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO
+                    }
                 } else {
-                    Log.d(TAG, "playAlarmSound: Bluetooth SCO not available/off call.")
+                    audioManager.isBluetoothA2dpOn || audioManager.isBluetoothScoOn
+                }
+                
+                if (hasBluetoothHeadset) {
+                    Log.d(TAG, "playAlarmSound: Bluetooth headset detected.")
+                    
+                    // 设置音频模式为通信模式，这对于蓝牙耳机很重要
+                    val originalMode = audioManager.mode
+                    audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+                    
+                    // 尝试启用 SCO
+                    if (audioManager.isBluetoothScoAvailableOffCall) {
+                        Log.d(TAG, "playAlarmSound: Bluetooth SCO available. Starting SCO.")
+                        audioManager.startBluetoothSco()
+                        audioManager.isBluetoothScoOn = true
+                        
+                        // 添加延迟检查，确保 SCO 连接已建立
+                        Handler(Looper.getMainLooper()).postDelayed({
+                            Log.d(TAG, "playAlarmSound: SCO status after delay: isBluetoothScoOn=${audioManager.isBluetoothScoOn}")
+                        }, 1000)
+                    } else {
+                        Log.d(TAG, "playAlarmSound: Bluetooth SCO not available/off call. Using A2DP.")
+                        // 如果 SCO 不可用，尝试使用 A2DP
+                        audioManager.isSpeakerphoneOn = false
+                    }
+                    
+                    // 存储原始模式，以便在播放完成后恢复
+                    // 存储原始模式，作为局部变量传递给监听器
+                } else {
+                    Log.d(TAG, "playAlarmSound: Wired headset detected. Routing audio to wired headset.")
+                    // 有线耳机不需要特殊处理，系统会自动路由
+                    audioManager.isSpeakerphoneOn = false
                 }
             } else {
                 Log.d(TAG, "playAlarmSound: No headset detected. Playing on speaker.")
+                // 确保使用扬声器
+                audioManager.isSpeakerphoneOn = true
             }
 
             mp.setOnErrorListener { player, what, extra ->
@@ -711,12 +746,25 @@ class StudyTimerService : Service() {
                 }
             }
 
+            // 记录原始音频模式和蓝牙状态，以便在播放完成后恢复
+            val originalMode = audioManager.mode
+            val originalBluetoothScoOn = audioManager.isBluetoothScoOn
+            
             mp.setOnCompletionListener { completedPlayer ->
                 Log.d(TAG, "playAlarmSound: MediaPlayer playback completed. URI: $soundUri")
                 completedPlayer.release()
                 if (this.mediaPlayer == completedPlayer) this.mediaPlayer = null
-                if (audioManager.isBluetoothScoOn) {
-                    Log.d(TAG, "playAlarmSound: SCO was on, stopping SCO.")
+                
+                // 恢复原始音频模式
+                if (audioManager.mode != originalMode) {
+                    audioManager.mode = originalMode
+                    Log.d(TAG, "playAlarmSound: Restored audio mode to $originalMode")
+                }
+                
+                // 如果我们启用了 SCO 但原来没有启用，则停止它
+                if (audioManager.isBluetoothScoOn && !originalBluetoothScoOn) {
+                    Log.d(TAG, "playAlarmSound: SCO was turned on by us, stopping SCO.")
+                    audioManager.isBluetoothScoOn = false
                     audioManager.stopBluetoothSco()
                 }
             }
@@ -758,9 +806,44 @@ class StudyTimerService : Service() {
             Log.d(TAG, "playBreakSound: AudioAttributes set to USAGE_NOTIFICATION")
 
             if (headsetConnected) {
-                Log.d(TAG, "playBreakSound: Headset connected, routing to headset (default behavior).")
+                Log.d(TAG, "playBreakSound: Headset connected, attempting to route audio to headset.")
+                
+                // 先检查是否有蓝牙耳机
+                val hasBluetoothHeadset = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    val devices = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+                    devices.any { device -> 
+                        device.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP || 
+                        device.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO
+                    }
+                } else {
+                    audioManager.isBluetoothA2dpOn || audioManager.isBluetoothScoOn
+                }
+                
+                if (hasBluetoothHeadset) {
+                    Log.d(TAG, "playBreakSound: Bluetooth headset detected.")
+                    
+                    // 设置音频模式为通信模式，这对于蓝牙耳机很重要
+                    audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+                    
+                    // 尝试启用 SCO
+                    if (audioManager.isBluetoothScoAvailableOffCall) {
+                        Log.d(TAG, "playBreakSound: Bluetooth SCO available. Starting SCO.")
+                        audioManager.startBluetoothSco()
+                        audioManager.isBluetoothScoOn = true
+                    } else {
+                        Log.d(TAG, "playBreakSound: Bluetooth SCO not available/off call. Using A2DP.")
+                        // 如果 SCO 不可用，尝试使用 A2DP
+                        audioManager.isSpeakerphoneOn = false
+                    }
+                } else {
+                    Log.d(TAG, "playBreakSound: Wired headset detected. Routing audio to wired headset.")
+                    // 有线耳机不需要特殊处理，系统会自动路由
+                    audioManager.isSpeakerphoneOn = false
+                }
             } else {
-                Log.d(TAG, "playBreakSound: No headset, playing on speaker (default behavior).")
+                Log.d(TAG, "playBreakSound: No headset detected. Playing on speaker.")
+                // 确保使用扬声器
+                audioManager.isSpeakerphoneOn = true
             }
 
             mp.setOnErrorListener { player, what, extra ->
@@ -783,10 +866,27 @@ class StudyTimerService : Service() {
                 }
             }
 
+            // 记录原始音频模式和蓝牙状态，以便在播放完成后恢复
+            val originalMode = audioManager.mode
+            val originalBluetoothScoOn = audioManager.isBluetoothScoOn
+            
             mp.setOnCompletionListener { completedPlayer ->
                 Log.d(TAG, "playBreakSound: MediaPlayer playback completed. URI: $soundUri")
                 completedPlayer.release()
                 if (this.breakMediaPlayer == completedPlayer) this.breakMediaPlayer = null
+                
+                // 恢复原始音频模式
+                if (audioManager.mode != originalMode) {
+                    audioManager.mode = originalMode
+                    Log.d(TAG, "playBreakSound: Restored audio mode to $originalMode")
+                }
+                
+                // 如果我们启用了 SCO 但原来没有启用，则停止它
+                if (audioManager.isBluetoothScoOn && !originalBluetoothScoOn) {
+                    Log.d(TAG, "playBreakSound: SCO was turned on by us, stopping SCO.")
+                    audioManager.isBluetoothScoOn = false
+                    audioManager.stopBluetoothSco()
+                }
             }
 
             Log.d(TAG, "playBreakSound: Preparing MediaPlayer asynchronously for URI: $soundUri")
@@ -828,9 +928,44 @@ class StudyTimerService : Service() {
             Log.d(TAG, "playEyeRestCompleteSound: AudioAttributes set to USAGE_NOTIFICATION")
 
             if (headsetConnected) {
-                Log.d(TAG, "playEyeRestCompleteSound: Headset connected, routing to headset (default behavior).")
+                Log.d(TAG, "playEyeRestCompleteSound: Headset connected, attempting to route audio to headset.")
+                
+                // 先检查是否有蓝牙耳机
+                val hasBluetoothHeadset = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    val devices = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+                    devices.any { device -> 
+                        device.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP || 
+                        device.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO
+                    }
+                } else {
+                    audioManager.isBluetoothA2dpOn || audioManager.isBluetoothScoOn
+                }
+                
+                if (hasBluetoothHeadset) {
+                    Log.d(TAG, "playEyeRestCompleteSound: Bluetooth headset detected.")
+                    
+                    // 设置音频模式为通信模式，这对于蓝牙耳机很重要
+                    audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+                    
+                    // 尝试启用 SCO
+                    if (audioManager.isBluetoothScoAvailableOffCall) {
+                        Log.d(TAG, "playEyeRestCompleteSound: Bluetooth SCO available. Starting SCO.")
+                        audioManager.startBluetoothSco()
+                        audioManager.isBluetoothScoOn = true
+                    } else {
+                        Log.d(TAG, "playEyeRestCompleteSound: Bluetooth SCO not available/off call. Using A2DP.")
+                        // 如果 SCO 不可用，尝试使用 A2DP
+                        audioManager.isSpeakerphoneOn = false
+                    }
+                } else {
+                    Log.d(TAG, "playEyeRestCompleteSound: Wired headset detected. Routing audio to wired headset.")
+                    // 有线耳机不需要特殊处理，系统会自动路由
+                    audioManager.isSpeakerphoneOn = false
+                }
             } else {
-                Log.d(TAG, "playEyeRestCompleteSound: No headset, playing on speaker (default behavior).")
+                Log.d(TAG, "playEyeRestCompleteSound: No headset detected. Playing on speaker.")
+                // 确保使用扬声器
+                audioManager.isSpeakerphoneOn = true
             }
 
             mp.setOnErrorListener { player, what, extra ->
@@ -853,10 +988,27 @@ class StudyTimerService : Service() {
                 }
             }
 
+            // 记录原始音频模式和蓝牙状态，以便在播放完成后恢复
+            val originalMode = audioManager.mode
+            val originalBluetoothScoOn = audioManager.isBluetoothScoOn
+            
             mp.setOnCompletionListener { completedPlayer ->
                 Log.d(TAG, "playEyeRestCompleteSound: MediaPlayer playback completed. URI: $soundUri")
                 completedPlayer.release()
                 if (this.eyeRestMediaPlayer == completedPlayer) this.eyeRestMediaPlayer = null
+                
+                // 恢复原始音频模式
+                if (audioManager.mode != originalMode) {
+                    audioManager.mode = originalMode
+                    Log.d(TAG, "playEyeRestCompleteSound: Restored audio mode to $originalMode")
+                }
+                
+                // 如果我们启用了 SCO 但原来没有启用，则停止它
+                if (audioManager.isBluetoothScoOn && !originalBluetoothScoOn) {
+                    Log.d(TAG, "playEyeRestCompleteSound: SCO was turned on by us, stopping SCO.")
+                    audioManager.isBluetoothScoOn = false
+                    audioManager.stopBluetoothSco()
+                }
             }
 
             Log.d(TAG, "playEyeRestCompleteSound: Preparing MediaPlayer asynchronously for URI: $soundUri")
