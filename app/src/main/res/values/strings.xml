@@ -1,3 +1,41 @@
 <resources>
+    <!-- App Name -->
     <string name="app_name">StudyTimer</string>
+    
+    <!-- Main Screen -->
+    <string name="start">Start</string>
+    <string name="stop">Stop</string>
+    <string name="settings">Settings</string>
+    <string name="test_mode">Test Mode</string>
+    <string name="test_mode_enabled">Test mode enabled</string>
+    <string name="test_mode_disabled">Test mode disabled</string>
+    <string name="test_mode_description">Study: 30s Alarm: 10s Break: 10s</string>
+    <string name="continue_next_cycle">Continue to Next Cycle</string>
+    <string name="return_to_main">Return to Main Screen</string>
+    <string name="cycle_completed_title">Cycle Completed</string>
+    <string name="cycle_completed_message">You have completed a study cycle.</string>
+    <string name="cycle_completed_question">Would you like to continue with the next cycle or return to the main screen?</string>
+    
+    <!-- Timer States -->
+    <string name="state_studying">Focus on your work. Alarms will sound every %1$d-%2$d minutes.</string>
+    <string name="state_break">Take a break! You have earned it.</string>
+    <string name="state_eye_rest">Close your eyes and relax for 10 seconds.</string>
+    <string name="state_idle_normal">%1$d min study + %2$d min break cycles with eye rest alarms every %3$d-%4$d min.</string>
+    <string name="state_idle_test">Test mode: %1$d s study + %2$d s break cycles with eye rest alarms every %3$d-%4$d s.</string>
+    
+    <!-- Settings Screen -->
+    <string name="settings_title">Settings</string>
+    <string name="timer_configuration">Timer Configuration</string>
+    <string name="study_duration">Study Duration</string>
+    <string name="study_duration_format">study %1$d min + break %2$d min</string>
+    <string name="alarm_configuration">Alarm Configuration</string>
+    <string name="min_alarm_interval">Min Alarm Interval</string>
+    <string name="max_alarm_interval">Max Alarm Interval</string>
+    <string name="show_next_alarm_time">Show Next Alarm Time</string>
+    <string name="sound_configuration">Sound Configuration</string>
+    <string name="alarm_sound">Alarm Sound</string>
+    <string name="eye_rest_sound">Eye Rest Sound</string>
+    <string name="minutes_format">%d min</string>
+    <string name="on">On</string>
+    <string name="off">Off</string>
 </resources>

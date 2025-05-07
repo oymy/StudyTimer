@@ -28,6 +28,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.res.stringResource
 import java.util.concurrent.TimeUnit
 import com.oymyisme.studytimer.ui.theme.StudyTimerTheme
 import java.util.Locale
@@ -82,7 +83,7 @@ fun StudyTimerApp(
             ) {
                 // App title
                 Text(
-                    text = "Study Timer",
+                    text = stringResource(R.string.app_name),
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -159,21 +160,33 @@ fun StudyTimerApp(
                 Text(
                     text = when (timerState) {
                         StudyTimerService.TimerState.STUDYING ->
-                            "Focus on your work. Alarms will sound every 3-5 minutes."
+                            stringResource(R.string.state_studying, minAlarmIntervalMin, maxAlarmIntervalMin)
 
                         StudyTimerService.TimerState.BREAK ->
-                            "Take a break! You've earned it."
+                            stringResource(R.string.state_break)
 
                         StudyTimerService.TimerState.EYE_REST ->
-                            "Close your eyes and relax for 10 seconds."
+                            stringResource(R.string.state_eye_rest)
 
                         StudyTimerService.TimerState.IDLE -> {
                             if (testModeEnabled) {
                                 // 测试模式下显示测试时间
-                                "Test mode: ${TestMode.getStudyDurationMin()}s study + ${TestMode.getBreakDurationMin()}s break cycles with eye rest alarms every ${TestMode.getMinAlarmIntervalMin()}-${TestMode.getMaxAlarmIntervalMin()}s."
+                                stringResource(
+                                    R.string.state_idle_test,
+                                    TestMode.getStudyDurationMin(),
+                                    TestMode.getBreakDurationMin(),
+                                    TestMode.getMinAlarmIntervalMin(),
+                                    TestMode.getMaxAlarmIntervalMin()
+                                )
                             } else {
                                 // 非测试模式下显示实际设置的学习周期
-                                "${studyDurationMin}min study + ${breakDurationMin}min break cycles with eye rest alarms every ${minAlarmIntervalMin}-${maxAlarmIntervalMin}min."
+                                stringResource(
+                                    R.string.state_idle_normal,
+                                    studyDurationMin,
+                                    breakDurationMin,
+                                    minAlarmIntervalMin,
+                                    maxAlarmIntervalMin
+                                )
                             }
                         }
                     },
@@ -209,11 +222,11 @@ fun StudyTimerApp(
                         ) {
                             Column {
                                 Text(
-                                    text = "测试模式",
+                                    text = stringResource(R.string.test_mode),
                                     fontWeight = FontWeight.Medium
                                 )
                                 Text(
-                                    text = "学习：30秒 闹钟：10秒 休息：10秒",
+                                    text = stringResource(R.string.test_mode_description),
                                     fontSize = 12.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -276,11 +289,11 @@ fun StudyTimerApp(
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(
                                         imageVector = Icons.Default.Settings,
-                                        contentDescription = "Settings",
+                                        contentDescription = stringResource(R.string.settings),
                                         modifier = Modifier.size(20.dp)
                                     )
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Settings")
+                                    Text(stringResource(R.string.settings))
                                 }
                             }
                             
@@ -299,9 +312,9 @@ fun StudyTimerApp(
                                     .padding(vertical = 4.dp)
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.PlayArrow, contentDescription = "Start")
+                                    Icon(Icons.Default.PlayArrow, contentDescription = stringResource(R.string.start))
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Start")
+                                    Text(stringResource(R.string.start))
                                 }
                             }
                         }
@@ -317,9 +330,9 @@ fun StudyTimerApp(
                                 shape = RoundedCornerShape(12.dp)
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Close, contentDescription = "Stop")
+                                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.stop))
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Stop")
+                                    Text(stringResource(R.string.stop))
                                 }
                             }
                         }
@@ -472,16 +485,8 @@ fun CycleCompletedDialog(
 ) {
     // 使用标准的 AlertDialog，确保在最上层显示
     AlertDialog(
-        onDismissRequest = { /* 不允许点击外部关闭 */ },
-        title = {
-            Text(
-                text = "恭喜完成学习周期！",
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-        },
+        onDismissRequest = { /* 不允许通过点击外部关闭 */ },
+        title = { Text(stringResource(R.string.cycle_completed_title)) },
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -496,7 +501,7 @@ fun CycleCompletedDialog(
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 Text(
-                    text = "你想继续下一个周期还是返回主界面？",
+                    text = stringResource(R.string.cycle_completed_question),
                     textAlign = TextAlign.Center,
                     fontSize = 16.sp
                 )
@@ -513,7 +518,7 @@ fun CycleCompletedDialog(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Refresh, contentDescription = "Continue")
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("继续学习")
+                    Text(stringResource(R.string.continue_next_cycle))
                 }
             }
         },
@@ -526,7 +531,7 @@ fun CycleCompletedDialog(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Home, contentDescription = "Return")
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("返回")
+                    Text(stringResource(R.string.return_to_main))
                 }
             }
         },

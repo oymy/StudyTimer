@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App Name -->
+    <string name="app_name">学习计时器</string>
+    
+    <!-- Main Screen -->
+    <string name="start">开始</string>
+    <string name="stop">停止</string>
+    <string name="settings">设置</string>
+    <string name="test_mode">测试模式</string>
+    <string name="test_mode_enabled">测试模式已启用</string>
+    <string name="test_mode_disabled">测试模式已关闭</string>
+    <string name="test_mode_description">学习：30秒 闹钟：10秒 休息：10秒</string>
+    <string name="continue_next_cycle">继续下一个周期</string>
+    <string name="return_to_main">返回主界面</string>
+    <string name="cycle_completed_title">周期完成</string>
+    <string name="cycle_completed_message">您已完成一个学习周期。</string>
+    <string name="cycle_completed_question">您想继续下一个周期还是返回主界面？</string>
+    
+    <!-- Timer States -->
+    <string name="state_studying">专注于您的工作。闹钟将每 %1$d-%2$d 分钟响一次。</string>
+    <string name="state_break">休息一下！您已经赢得了它。</string>
+    <string name="state_eye_rest">闭上眼睛，放松 10 秒钟。</string>
+    <string name="state_idle_normal">%1$d 分钟学习 + %2$d 分钟休息周期，每 %3$d-%4$d 分钟休息眼睛。</string>
+    <string name="state_idle_test">测试模式：%1$d 秒学习 + %2$d 秒休息周期，每 %3$d-%4$d 秒休息眼睛。</string>
+    
+    <!-- Settings Screen -->
+    <string name="settings_title">设置</string>
+    <string name="timer_configuration">计时器配置</string>
+    <string name="study_duration">学习时长</string>
+    <string name="study_duration_format">学习 %1$d 分钟 + 休息 %2$d 分钟</string>
+    <string name="alarm_configuration">闹钟配置</string>
+    <string name="min_alarm_interval">最小闹钟间隔</string>
+    <string name="max_alarm_interval">最大闹钟间隔</string>
+    <string name="show_next_alarm_time">显示下次闹钟时间</string>
+    <string name="sound_configuration">声音配置</string>
+    <string name="alarm_sound">闹钟声音</string>
+    <string name="eye_rest_sound">眼睛休息声音</string>
+    <string name="minutes_format">%d 分钟</string>
+    <string name="on">开</string>
+    <string name="off">关</string>
+</resources>

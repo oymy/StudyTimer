@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlin.math.roundToInt
@@ -47,7 +48,7 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
+                title = { Text(stringResource(R.string.settings_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -124,7 +125,7 @@ fun SettingsCard(
             horizontalAlignment = Alignment.Start
         ) {
             Text(
-                text = "Timer Configuration", // Changed title slightly
+                text = stringResource(R.string.timer_configuration),
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
@@ -132,11 +133,16 @@ fun SettingsCard(
             )
             
             // Study Duration Setting
+            val studyDurationOptions = listOf(30, 45, 60, 75, 90, 105, 120)
+            val formattedOptions = studyDurationOptions.associate { duration ->
+                val breakDuration = calculateBreakDuration(duration)
+                duration to "study $duration min + break $breakDuration min"
+            }
             SettingItem(
-                title = "Study Duration",
-                value = formatStudyDurationWithBreak(studyDurationMin),
-                options = listOf(30, 45, 60, 75, 90, 105, 120),
-                formatOption = { formatStudyDurationWithBreak(it) },
+                title = stringResource(R.string.study_duration),
+                value = formattedOptions[studyDurationMin] ?: "",
+                options = studyDurationOptions,
+                formatOption = { duration -> formattedOptions[duration] ?: "" },
                 onOptionSelected = onStudyDurationChange
             )
             
@@ -144,29 +150,31 @@ fun SettingsCard(
             
             // Alarm Interval Settings
             Text(
-                text = "Eye Rest Alarm Interval", // Changed title slightly
+                text = stringResource(R.string.alarm_configuration),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
             
             // Min Alarm Interval
+            val minAlarmIntervalText = "$minAlarmIntervalMin min"
             SettingItem(
-                title = "Minimum Interval",
-                value = "$minAlarmIntervalMin min",
+                title = stringResource(R.string.min_alarm_interval),
+                value = minAlarmIntervalText,
                 options = listOf(1, 2, 3, 4, 5),
-                formatOption = { "$it min" },
+                formatOption = { min -> "$min min" },
                 onOptionSelected = onMinAlarmIntervalChange
             )
             
             Spacer(modifier = Modifier.height(8.dp))
             
             // Max Alarm Interval
+            val maxAlarmIntervalText = "$maxAlarmIntervalMin min"
             SettingItem(
-                title = "Maximum Interval",
-                value = "$maxAlarmIntervalMin min",
+                title = stringResource(R.string.max_alarm_interval),
+                value = maxAlarmIntervalText,
                 options = listOf(3, 4, 5, 6, 7, 8, 9, 10),
-                formatOption = { "$it min" },
+                formatOption = { min -> "$min min" },
                 onOptionSelected = onMaxAlarmIntervalChange
             )
 
@@ -184,7 +192,7 @@ fun SettingsCard(
                 horizontalArrangement = Arrangement.SpaceBetween // Pushes label and switch apart
             ) {
                 Text(
-                    text = "Show Next Alarm Time",
+                    text = stringResource(R.string.show_next_alarm_time),
                     style = MaterialTheme.typography.bodyLarge
                 )
                 Switch(
@@ -206,7 +214,7 @@ fun SettingsCard(
             
             // 提示音设置标题
             Text(
-                text = "提示音设置",
+                text = stringResource(R.string.sound_configuration),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier.padding(bottom = 8.dp)
@@ -214,7 +222,7 @@ fun SettingsCard(
             
             // 闹钟提示音设置
             SoundSettingItem(
-                title = "闹钟提示音",
+                title = stringResource(R.string.alarm_sound),
                 selectedSoundId = alarmSoundType,
                 soundOptions = soundOptions,
                 onSoundSelected = onAlarmSoundTypeChange
@@ -224,7 +232,7 @@ fun SettingsCard(
             
             // 休息结束提示音设置
             SoundSettingItem(
-                title = "休息结束提示音",
+                title = stringResource(R.string.eye_rest_sound),
                 selectedSoundId = eyeRestSoundType,
                 soundOptions = soundOptions,
                 onSoundSelected = onEyeRestSoundTypeChange
@@ -357,10 +365,11 @@ fun SoundSettingItem(
  * @param studyDuration 学习时长（分钟）
  * @return 格式化后的字符串，包含学习时长和休息时长
  */
+@Composable
 private fun formatStudyDurationWithBreak(studyDuration: Int): String {
     // 使用与 MainActivity 相同的计算方法
     val breakDuration = calculateBreakDuration(studyDuration)
-    return "study ${studyDuration}min + break ${breakDuration}min"
+    return stringResource(R.string.study_duration_format, studyDuration, breakDuration)
 }
 
 /**
