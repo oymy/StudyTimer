@@ -38,4 +38,19 @@
     <string name="minutes_format">%d min</string>
     <string name="on">On</string>
     <string name="off">Off</string>
+    
+    <!-- Notifications -->
+    <string name="notification_channel_name">Study Timer</string>
+    <string name="notification_channel_description">Notifications for Study Timer</string>
+    <string name="notification_title">Study Timer</string>
+    <string name="notification_studying">Studying: %1$s</string>
+    <string name="notification_studying_with_alarm">Studying: %1$s | Next alarm in: %2$s</string>
+    <string name="notification_break">Break Time: %1$s</string>
+    <string name="notification_eye_rest">Eye Rest: %1$s</string>
+    <string name="notification_idle">Timer Idle</string>
+    <string name="notification_timer_finished">Timer finished. Ready to start a new session.</string>
+    <string name="notification_eye_rest_start">Eye rest for 10 seconds...</string>
+    <string name="notification_eye_rest_ongoing">Eye rest: %1$s</string>
+    <string name="notification_rest_eyes">Rest your eyes for 10 seconds</string>
+    <string name="notification_break_time">Break time! Relax for %1$d minutes.</string>
 </resources>

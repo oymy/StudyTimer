@@ -289,8 +289,8 @@ class StudyTimerService : Service() {
     
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val name = "Study Timer"
-            val descriptionText = "Notifications for Study Timer"
+            val name = getString(R.string.notification_channel_name)
+            val descriptionText = getString(R.string.notification_channel_description)
             val importance = NotificationManager.IMPORTANCE_LOW // 降低重要性级别，避免声音干扰
             val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
                 description = descriptionText
@@ -311,7 +311,7 @@ class StudyTimerService : Service() {
         )
         
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Study Timer")
+            .setContentTitle(getString(R.string.notification_title))
             .setContentText(contentText)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentIntent(pendingIntent)
@@ -412,7 +412,7 @@ class StudyTimerService : Service() {
                     }, 1000)
                     
                     // After break, go to IDLE, user can start a new session.
-                    updateNotification("Timer finished. Ready to start a new session.")
+                    updateNotification(getString(R.string.notification_timer_finished))
                     // Update durations and reset timeLeft for IDLE state to show potential study time
                     updateCurrentDurationsInternal()
                     _timeLeftInSession.value = mStudyDurationMillis
@@ -452,7 +452,7 @@ class StudyTimerService : Service() {
         Log.d(TAG, "Starting eye rest. Full cycle progress: ${_elapsedTimeInFullCycleMillis.value}. Study time left: ${_timeLeftBeforeEyeRest}")
 
         
-        updateNotification("Eye rest for 10 seconds...")
+        updateNotification(getString(R.string.notification_eye_rest_start))
         
         // 不在这里播放闹钟声音，因为已经在 triggerAlarm 中播放了
         
@@ -463,7 +463,7 @@ class StudyTimerService : Service() {
                 
                 _timeLeftInSession.value = millisUntilFinished
                 // 主计时器在后台继续运行，所以不需要在这里更新 _elapsedTimeInFullCycleMillis
-                updateNotification("Eye rest: ${formatTime(millisUntilFinished)}")
+                updateNotification(getString(R.string.notification_eye_rest_ongoing, formatTime(millisUntilFinished)))
             
             }
             
@@ -595,12 +595,12 @@ class StudyTimerService : Service() {
     
     private fun startEyeRest() {
         _timerState.value = TimerState.EYE_REST
-        updateNotification("Rest your eyes for 10 seconds")
+        updateNotification(getString(R.string.notification_rest_eyes))
         
         // Start eye rest timer
         eyeRestTimer = object : CountDownTimer(EYE_REST_TIME_MS, 1000) {
             override fun onTick(millisUntilFinished: Long) {
-                updateNotification("Rest your eyes: ${formatTime(millisUntilFinished)}")
+                updateNotification(getString(R.string.notification_eye_rest_ongoing, formatTime(millisUntilFinished)))
             }
             
             override fun onFinish() {
@@ -646,7 +646,7 @@ class StudyTimerService : Service() {
                 // For now, let's assume it stops or goes to a paused state, awaiting user action.
             }
         }.start()
-        updateNotification("Break time! Relax for $breakDurationMin minutes.")
+        updateNotification(getString(R.string.notification_break_time, breakDurationMin))
     }
     
     private fun playAlarmSound() {
@@ -1053,14 +1053,14 @@ class StudyTimerService : Service() {
                 val sessionTime = formatTime(_timeLeftInSession.value)
                 if (showNextAlarmTimeInNotification) {
                     val alarmTime = formatTime(_timeUntilNextAlarm.value)
-                    "Studying: $sessionTime | Next alarm in: $alarmTime"
+                    getString(R.string.notification_studying_with_alarm, sessionTime, alarmTime)
                 } else {
-                    "Studying: $sessionTime"
+                    getString(R.string.notification_studying, sessionTime)
                 }
             }
-            TimerState.BREAK -> "Break Time: ${formatTime(_timeLeftInSession.value)}"
-            TimerState.EYE_REST -> "Eye Rest: ${formatTime(EYE_REST_TIME_MS - (_timeUntilNextAlarm.value))}" 
-            TimerState.IDLE -> "Timer Idle"
+            TimerState.BREAK -> getString(R.string.notification_break, formatTime(_timeLeftInSession.value))
+            TimerState.EYE_REST -> getString(R.string.notification_eye_rest, formatTime(EYE_REST_TIME_MS - (_timeUntilNextAlarm.value)))
+            TimerState.IDLE -> getString(R.string.notification_idle)
         }
     }
     
@@ -1171,7 +1171,7 @@ class StudyTimerService : Service() {
                         vibrate(VIBRATE_PATTERN_ALARM, -1)
                         _timerState.value = TimerState.IDLE
                         // After break, go to IDLE, user can start a new session.
-                        updateNotification("Timer finished. Ready to start a new session.")
+                        updateNotification(getString(R.string.notification_timer_finished))
                         // Update durations and reset timeLeft for IDLE state to show potential study time
                         updateCurrentDurationsInternal()
                         _timeLeftInSession.value = mStudyDurationMillis

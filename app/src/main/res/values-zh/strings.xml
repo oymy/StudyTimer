@@ -39,4 +39,19 @@
     <string name="minutes_format">%d 分钟</string>
     <string name="on">开</string>
     <string name="off">关</string>
+    
+    <!-- Notifications -->
+    <string name="notification_channel_name">学习计时器</string>
+    <string name="notification_channel_description">学习计时器的通知</string>
+    <string name="notification_title">学习计时器</string>
+    <string name="notification_studying">学习中：%1$s</string>
+    <string name="notification_studying_with_alarm">学习中：%1$s | 下次闹钟：%2$s</string>
+    <string name="notification_break">休息时间：%1$s</string>
+    <string name="notification_eye_rest">眼睛休息：%1$s</string>
+    <string name="notification_idle">计时器空闲</string>
+    <string name="notification_timer_finished">计时器已完成。准备开始新的学习。</string>
+    <string name="notification_eye_rest_start">眼睛休息 10 秒钟...</string>
+    <string name="notification_eye_rest_ongoing">眼睛休息：%1$s</string>
+    <string name="notification_rest_eyes">休息眼睛 10 秒钟</string>
+    <string name="notification_break_time">休息时间！放松 %1$d 分钟。</string>
 </resources>
