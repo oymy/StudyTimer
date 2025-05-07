@@ -44,7 +44,7 @@ class StudyTimerService : Service() {
         // Default timer constants
         private const val DEFAULT_STUDY_TIME_MIN = 90 // 90 minutes
         private const val DEFAULT_BREAK_TIME_MIN = 20 // Default break if not passed
-        const val EYE_REST_TIME_MS = 10 * 1000L // 10 seconds - fixed
+        const val EYE_REST_TIME_MS = TestMode.TEST_EYE_REST_TIME_MS // 使用 TestMode 类中定义的常量
         const val DEFAULT_MIN_ALARM_INTERVAL_MIN = 3
         const val DEFAULT_MAX_ALARM_INTERVAL_MIN = 5
         
@@ -65,8 +65,7 @@ class StudyTimerService : Service() {
         const val EXTRA_TEST_MODE = "com.oymyisme.studytimer.extra.TEST_MODE"
         
         // 测试模式的常量 - 缩短一半时长
-        private const val TEST_ALARM_INTERVAL_MS = 10 * 1000L // 10秒
-        private const val TEST_BREAK_TIME_MS = 10 * 1000L // 10秒
+        // 测试模式的时间常量已移至 TestMode 类中统一管理
 
         // Vibration Patterns
         val VIBRATE_PATTERN_ALARM = longArrayOf(0, 1000, 500, 1000) // Wait 0ms, Vibrate 1s, Pause 0.5s, Vibrate 1s
@@ -119,32 +118,32 @@ class StudyTimerService : Service() {
     // Calculated time values in milliseconds
     private val studyTimeMs: Long
         get() = if (testMode) {
-            // 测试模式下使用 30 秒
-            30 * 1000L
+            // 测试模式下使用 TestMode 类中定义的常量
+            TestMode.TEST_STUDY_TIME_MS
         } else {
             studyDurationMin * 60 * 1000L
         }
     
     private val breakTimeMs: Long
         get() = if (testMode) {
-            // 测试模式下使用 20 秒
-            TEST_BREAK_TIME_MS
+            // 测试模式下使用 TestMode 类中定义的常量
+            TestMode.TEST_BREAK_TIME_MS
         } else {
             breakDurationMin * 60 * 1000L
         }
     
     private val minAlarmIntervalMs: Long
         get() = if (testMode) {
-            // 测试模式下使用 20 秒
-            TEST_ALARM_INTERVAL_MS
+            // 测试模式下使用 TestMode 类中定义的常量
+            TestMode.TEST_ALARM_INTERVAL_MS
         } else {
             minAlarmIntervalMin * 60 * 1000L
         }
     
     private val maxAlarmIntervalMs: Long
         get() = if (testMode) {
-            // 测试模式下使用 20 秒
-            TEST_ALARM_INTERVAL_MS
+            // 测试模式下使用 TestMode 类中定义的常量
+            TestMode.TEST_ALARM_INTERVAL_MS
         } else {
             maxAlarmIntervalMin * 60 * 1000L
         }

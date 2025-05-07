@@ -99,8 +99,8 @@ fun StudyTimerApp(
                             val currentTotalCycleDurationMillis = when {
                                 testModeEnabled && TestMode.isEnabled -> {
                                     // 测试模式下的总周期时长
-                                    val studyTimeMs = (TestMode.TEST_STUDY_DURATION_MIN * 60 * 1000).toLong()
-                                    val breakTimeMs = (TestMode.TEST_BREAK_DURATION_MIN * 60 * 1000).toLong()
+                                    val studyTimeMs = TestMode.TEST_STUDY_TIME_MS
+                                    val breakTimeMs = TestMode.TEST_BREAK_TIME_MS
                                     studyTimeMs + breakTimeMs
                                 }
                                 else -> {
@@ -132,8 +132,8 @@ fun StudyTimerApp(
                         val displayTime = if (timerState == StudyTimerService.TimerState.IDLE) {
                             if (testModeEnabled && TestMode.isEnabled) {
                                 // 测试模式下的总周期时长
-                                val studyTimeMs = (TestMode.TEST_STUDY_DURATION_MIN * 60 * 1000).toLong()
-                                val breakTimeMs = (TestMode.TEST_BREAK_DURATION_MIN * 60 * 1000).toLong()
+                                val studyTimeMs = TestMode.TEST_STUDY_TIME_MS
+                                val breakTimeMs = TestMode.TEST_BREAK_TIME_MS
                                 studyTimeMs + breakTimeMs
                             } else {
                                 // 非测试模式下的总周期时长
@@ -191,10 +191,10 @@ fun StudyTimerApp(
                                 // 测试模式下显示测试时间
                                 stringResource(
                                     R.string.state_idle_test,
-                                    TestMode.getStudyDurationMin(),
-                                    TestMode.getBreakDurationMin(),
-                                    TestMode.getMinAlarmIntervalMin(),
-                                    TestMode.getMaxAlarmIntervalMin()
+                                    TestMode.getStudyDurationSec(),
+                                    TestMode.getBreakDurationSec(),
+                                    TestMode.getMinAlarmIntervalSec(),
+                                    TestMode.getMaxAlarmIntervalSec()
                                 )
                             } else {
                                 // 非测试模式下显示实际设置的学习周期
