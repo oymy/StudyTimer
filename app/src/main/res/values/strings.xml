@@ -39,6 +39,12 @@
     <string name="on">On</string>
     <string name="off">Off</string>
     
+    <!-- Timer Labels -->
+    <string name="timer_cycle">Cycle: %1$s</string>
+    <string name="timer_study">Study: %1$s</string>
+    <string name="timer_break">Break: %1$s</string>
+    <string name="timer_eye_rest">Eye Rest: %1$s</string>
+    
     <!-- Notifications -->
     <string name="notification_channel_name">Study Timer</string>
     <string name="notification_channel_description">Notifications for Study Timer</string>

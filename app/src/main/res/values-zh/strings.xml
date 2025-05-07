@@ -40,6 +40,12 @@
     <string name="on">开</string>
     <string name="off">关</string>
     
+    <!-- Timer Labels -->
+    <string name="timer_cycle">周期：%1$s</string>
+    <string name="timer_study">学习：%1$s</string>
+    <string name="timer_break">休息：%1$s</string>
+    <string name="timer_eye_rest">眼睛休息：%1$s</string>
+    
     <!-- Notifications -->
     <string name="notification_channel_name">学习计时器</string>
     <string name="notification_channel_description">学习计时器的通知</string>

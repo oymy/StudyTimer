@@ -122,32 +122,71 @@ fun StudyTimerApp(
                                 StudyTimerService.TimerState.IDLE -> 0f // Empty circle when idle, consistent with reset progress
                             }
                         },
-                        modifier = Modifier.size(200.dp),
+                        modifier = Modifier.size(300.dp), // 进一步增大圈圈进度条大小
                         color = MaterialTheme.colorScheme.primary,
-                        strokeWidth = 12.dp,
+                        strokeWidth = 20.dp, // 进一步增加描边宽度
                         trackColor = MaterialTheme.colorScheme.secondaryContainer,
                     )
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        // 在 IDLE 状态下，计算并显示总周期时长（学习+休息）
-                        val displayTime = if (timerState == StudyTimerService.TimerState.IDLE) {
-                            if (testModeEnabled && TestMode.isEnabled) {
-                                // 测试模式下的总周期时长
-                                val studyTimeMs = TestMode.TEST_STUDY_TIME_MS
-                                val breakTimeMs = TestMode.TEST_BREAK_TIME_MS
-                                studyTimeMs + breakTimeMs
-                            } else {
-                                // 非测试模式下的总周期时长
-                                studyDurationMin * 60 * 1000L + breakDurationMin * 60 * 1000L
-                            }
+                        // 计算总周期时长（学习+休息）
+                        val totalCycleDurationMs = if (testModeEnabled && TestMode.isEnabled) {
+                            // 测试模式下的总周期时长
+                            TestMode.TEST_STUDY_TIME_MS + TestMode.TEST_BREAK_TIME_MS
                         } else {
-                            timeLeftInSession
+                            // 非测试模式下的总周期时长
+                            studyDurationMin * 60 * 1000L + breakDurationMin * 60 * 1000L
                         }
                         
+                        // 计算并显示总周期的倒计时
+                        val totalCycleTimeLeft = when (timerState) {
+                            StudyTimerService.TimerState.IDLE -> totalCycleDurationMs
+                            StudyTimerService.TimerState.STUDYING -> {
+                                // 学习阶段，总周期倒计时 = 当前学习阶段剩余时间 + 休息时间
+                                timeLeftInSession + (if (testModeEnabled && TestMode.isEnabled) TestMode.TEST_BREAK_TIME_MS else breakDurationMin * 60 * 1000L)
+                            }
+                            StudyTimerService.TimerState.BREAK -> {
+                                // 休息阶段，总周期倒计时 = 当前休息阶段剩余时间
+                                timeLeftInSession
+                            }
+                            StudyTimerService.TimerState.EYE_REST -> {
+                                // 眼部休息阶段，总周期倒计时不受影响
+                                if (elapsedTimeInFullCycle < (if (testModeEnabled && TestMode.isEnabled) TestMode.TEST_STUDY_TIME_MS else studyDurationMin * 60 * 1000L)) {
+                                    // 在学习阶段的眼部休息
+                                    totalCycleDurationMs - elapsedTimeInFullCycle
+                                } else {
+                                    // 在休息阶段的眼部休息
+                                    (totalCycleDurationMs - elapsedTimeInFullCycle).coerceAtLeast(0L)
+                                }
+                            }
+                        }
+                        
+                        // 显示总周期倒计时
                         Text(
-                            text = formatTime(displayTime),
+                            text = stringResource(R.string.timer_cycle, formatTime(totalCycleTimeLeft)),
                             fontSize = 32.sp,
                             fontWeight = FontWeight.Bold
                         )
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        // 显示当前阶段倒计时
+                        if (timerState != StudyTimerService.TimerState.IDLE) {
+                            val timerTextRes = when (timerState) {
+                                StudyTimerService.TimerState.STUDYING -> R.string.timer_study
+                                StudyTimerService.TimerState.BREAK -> R.string.timer_break
+                                StudyTimerService.TimerState.EYE_REST -> R.string.timer_eye_rest
+                                else -> null
+                            }
+                            
+                            timerTextRes?.let {
+                                Text(
+                                    text = stringResource(it, formatTime(timeLeftInSession)),
+                                    fontSize = 24.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.secondary
+                                )
+                            }
+                        }
 
                         // Conditionally show the next alarm time row
                         if (timerState == StudyTimerService.TimerState.STUDYING && showNextAlarmTime) {
