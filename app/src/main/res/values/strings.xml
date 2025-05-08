@@ -10,11 +10,11 @@
     <string name="test_mode_enabled">Test mode enabled</string>
     <string name="test_mode_disabled">Test mode disabled</string>
     <string name="test_mode_description">Study: 30s Alarm: 10s Break: 10s</string>
-    <string name="continue_next_cycle">Continue to Next Cycle</string>
-    <string name="return_to_main">Return to Main Screen</string>
+    <string name="continue_next_cycle">Continue</string>
+    <string name="return_to_main">Return</string>
     <string name="cycle_completed_title">Cycle Completed</string>
-    <string name="cycle_completed_message">You have completed a study cycle.</string>
-    <string name="cycle_completed_question">Would you like to continue with the next cycle or return to the main screen?</string>
+    <string name="cycle_completed_message">Study cycle completed.</string>
+    <string name="cycle_completed_question">Continue with next cycle?</string>
     
     <!-- Timer States -->
     <string name="state_studying">Focus on your work. Alarms will sound every %1$d-%2$d minutes.</string>

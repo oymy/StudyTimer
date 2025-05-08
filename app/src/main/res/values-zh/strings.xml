@@ -11,11 +11,11 @@
     <string name="test_mode_enabled">测试模式已启用</string>
     <string name="test_mode_disabled">测试模式已关闭</string>
     <string name="test_mode_description">学习：30秒 闹钟：10秒 休息：10秒</string>
-    <string name="continue_next_cycle">继续下一个周期</string>
-    <string name="return_to_main">返回主界面</string>
+    <string name="continue_next_cycle">继续</string>
+    <string name="return_to_main">返回</string>
     <string name="cycle_completed_title">周期完成</string>
-    <string name="cycle_completed_message">您已完成一个学习周期。</string>
-    <string name="cycle_completed_question">您想继续下一个周期还是返回主界面？</string>
+    <string name="cycle_completed_message">学习周期已完成</string>
+    <string name="cycle_completed_question">是否继续下一个周期？</string>
     
     <!-- Timer States -->
     <string name="state_studying">专注于您的工作。闹钟将每 %1$d-%2$d 分钟响一次。</string>
