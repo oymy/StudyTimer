@@ -1,9 +1,11 @@
 package com.oymyisme.studytimer
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,8 +17,9 @@ import androidx.compose.ui.unit.sp
 import com.oymyisme.studytimer.ui.theme.StudyTimerTheme
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.ui.graphics.Color
@@ -59,11 +62,15 @@ fun SettingsScreen(
             )
         }
     ) { paddingValues ->
+        // 添加滚动状态
+        val scrollState = rememberScrollState()
+        
         Column(
             modifier = Modifier
                 .padding(paddingValues)
                 .padding(16.dp)
                 .fillMaxSize()
+                .verticalScroll(scrollState) // 添加滚动功能
         ) {
             // 主题设置卡片
             Card(
@@ -111,7 +118,7 @@ fun SettingsScreen(
                         
                         IconButton(onClick = onNavigateToThemeSettings) {
                             Icon(
-                                imageVector = Icons.Default.ArrowForward,
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                                 contentDescription = "进入主题设置",
                                 tint = MaterialTheme.colorScheme.primary
                             )

@@ -1,8 +1,10 @@
 package com.oymyisme.studytimer.settings
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -47,11 +49,15 @@ fun ThemeSettingsScreen(
             )
         }
     ) { paddingValues ->
+        // 添加滚动状态
+        val scrollState = rememberScrollState()
+        
         Column(
             modifier = Modifier
                 .padding(paddingValues)
                 .padding(16.dp)
                 .fillMaxSize()
+                .verticalScroll(scrollState) // 添加滚动功能
         ) {
             // 主题模式选择
             Text(
@@ -79,16 +85,19 @@ fun ThemeSettingsScreen(
                                 role = Role.RadioButton
                             )
                             .padding(horizontal = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween // 使内容靠两边显示
                     ) {
+                        // 文本放在左侧
+                        Text(
+                            text = getThemeModeText(themeMode),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        
+                        // 单选按钮放在右侧
                         RadioButton(
                             selected = (themeMode == currentThemeMode),
                             onClick = null // null because we're handling the click on the row
-                        )
-                        Text(
-                            text = getThemeModeText(themeMode),
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.padding(start = 16.dp)
                         )
                     }
                 }
