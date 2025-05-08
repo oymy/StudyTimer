@@ -71,7 +71,11 @@ fun SettingsScreen(
                     .fillMaxWidth()
                     .padding(bottom = 16.dp),
                 shape = RoundedCornerShape(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                colors = CardDefaults.cardColors(
+                    // 使用主题的 surfaceVariant 颜色，自动适应暗色模式
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp)
@@ -169,7 +173,8 @@ fun SettingsCard(
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFFF5F5F5) // Use a light grey or theme color
+            // 使用主题的 surface 颜色，自动适应暗色模式
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
         Column(
