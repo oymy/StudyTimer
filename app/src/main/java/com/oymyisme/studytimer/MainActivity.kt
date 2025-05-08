@@ -172,6 +172,7 @@ class MainActivity : ComponentActivity() {
                         maxAlarmIntervalMin = currentMaxInterval, // Pass setting
                         breakDurationMin = currentBreakDuration, // Pass calculated break duration
                         testModeEnabled = _testModeEnabled.value, // Pass test mode state
+                        testModeChangeTrigger = _testModeChangeTrigger.collectAsState().value, // 传递测试模式变化触发器
                         cycleCompleted = cycleCompleted.collectAsState().value, // 传递周期完成状态
                         onStartClick = { startStudySession() },
                         onStopClick = { stopStudySession() },
@@ -180,15 +181,21 @@ class MainActivity : ComponentActivity() {
                             // 更新测试模式状态
                             _testModeEnabled.value = enabled
                             
+                            // 更新 TestMode 类中的 isEnabled 属性
+                            TestMode.isEnabled = enabled
+                            
+                            // 更新触发器值，强制 UI 重组
+                            _testModeChangeTrigger.value = System.currentTimeMillis().toString()
+                            
                             // 直接通知服务更新测试模式状态，但不开始新的学习周期
-                            if (studyTimerService != null) {
+                            studyTimerService?.let { service ->
                                 // 直接更新服务中的测试模式状态
-                                studyTimerService?.updateTestMode(enabled, _studyDurationMin.value)
+                                service.updateTestMode(enabled, _studyDurationMin.value)
                                 
                                 // 如果当前是 IDLE 状态，强制更新 UI 显示
                                 if (uiTimerState.value == TimerManager.TimerState.IDLE) {
                                     // 强制更新 UI 显示
-                                    uiTimeLeftInSession.value = studyTimerService?.timeLeftInSession?.value ?: 0L
+                                    uiTimeLeftInSession.value = service.timeLeftInSession.value ?: 0L
                                 }
                             }
                             
@@ -277,6 +284,9 @@ class MainActivity : ComponentActivity() {
     
     // 测试模式状态
     private val _testModeEnabled = MutableStateFlow(true) // 默认开启测试模式，与 StudyTimerService 保持一致
+    
+    // 测试模式变化触发器，用于强制 UI 重组
+    private val _testModeChangeTrigger = MutableStateFlow("")
     
     // 周期完成状态，用于显示结束对话框
     private val _cycleCompleted = MutableStateFlow(false)

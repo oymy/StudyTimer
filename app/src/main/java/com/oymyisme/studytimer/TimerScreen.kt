@@ -49,6 +49,7 @@ fun StudyTimerApp(
     maxAlarmIntervalMin: Int,
     breakDurationMin: Int,
     testModeEnabled: Boolean = false,
+    testModeChangeTrigger: String = "", // 添加测试模式变化触发器参数，用于强制重组
     cycleCompleted: Boolean = false,
     onStartClick: () -> Unit,
     onStopClick: () -> Unit,
@@ -57,6 +58,8 @@ fun StudyTimerApp(
     onContinueNextCycle: () -> Unit = {},
     onReturnToMain: () -> Unit = {}
 ) {
+    // 定义一个变量来存储是否在测试模式下，避免重复检查
+    val isTestModeActive = testModeEnabled && TestMode.isEnabled
     // 周期完成对话框
     if (cycleCompleted) {
         Log.d("TimerScreen", "Showing cycle completed dialog, cycleCompleted=$cycleCompleted")
@@ -96,7 +99,8 @@ fun StudyTimerApp(
                 Box(contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(
                         progress = {
-                            val currentTotalCycleDurationMillis = if (testModeEnabled && TestMode.isEnabled) {
+                            
+                            val currentTotalCycleDurationMillis = if (isTestModeActive) {
                                 // 测试模式下的总周期时长
                                 TestMode.TEST_STUDY_TIME_MS + TestMode.TEST_BREAK_TIME_MS
                             }
@@ -126,7 +130,7 @@ fun StudyTimerApp(
                     )
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         // 计算总周期时长（学习+休息）
-                        val totalCycleDurationMs = if (testModeEnabled && TestMode.isEnabled) {
+                        val totalCycleDurationMs = if (isTestModeActive) {
                             // 测试模式下的总周期时长
                             TestMode.TEST_STUDY_TIME_MS + TestMode.TEST_BREAK_TIME_MS
                         } else {
@@ -139,7 +143,7 @@ fun StudyTimerApp(
                             TimerManager.TimerState.IDLE -> totalCycleDurationMs
                             TimerManager.TimerState.STUDYING -> {
                                 // 学习阶段，总周期倒计时 = 当前学习阶段剩余时间 + 休息时间
-                                timeLeftInSession + (if (testModeEnabled && TestMode.isEnabled) TestMode.TEST_BREAK_TIME_MS else breakDurationMin * 60 * 1000L)
+                                timeLeftInSession + (if (isTestModeActive) TestMode.TEST_BREAK_TIME_MS else breakDurationMin * 60 * 1000L)
                             }
                             TimerManager.TimerState.BREAK -> {
                                 // 休息阶段，总周期倒计时 = 当前休息阶段剩余时间
@@ -147,7 +151,7 @@ fun StudyTimerApp(
                             }
                             TimerManager.TimerState.EYE_REST -> {
                                 // 眼部休息阶段，总周期倒计时不受影响
-                                if (elapsedTimeInFullCycle < (if (testModeEnabled && TestMode.isEnabled) TestMode.TEST_STUDY_TIME_MS else studyDurationMin * 60 * 1000L)) {
+                                if (elapsedTimeInFullCycle < (if (isTestModeActive) TestMode.TEST_STUDY_TIME_MS else studyDurationMin * 60 * 1000L)) {
                                     // 在学习阶段的眼部休息
                                     totalCycleDurationMs - elapsedTimeInFullCycle
                                 } else {
@@ -223,7 +227,7 @@ fun StudyTimerApp(
                             stringResource(R.string.state_eye_rest)
 
                         TimerManager.TimerState.IDLE -> {
-                            if (testModeEnabled && TestMode.isEnabled) {
+                            if (isTestModeActive) {
                                 // 测试模式下显示测试时间
                                 stringResource(
                                     R.string.state_idle_test,
@@ -252,8 +256,8 @@ fun StudyTimerApp(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // 测试模式开关 - 只在调试版本中显示
-                if (timerState == TimerManager.TimerState.IDLE && TestMode.isEnabled) {
+                // 测试模式开关 - 始终显示，但只在空闲状态下显示
+                if (timerState == TimerManager.TimerState.IDLE) {
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -429,6 +433,7 @@ fun TimerScreenPreviewIdle() {
             maxAlarmIntervalMin = 5,
             breakDurationMin = 20,
             testModeEnabled = false,
+            testModeChangeTrigger = "",
             cycleCompleted = false,
             onStartClick = {}, 
             onStopClick = {}, 
@@ -455,6 +460,7 @@ fun TimerScreenPreviewStudying() {
             maxAlarmIntervalMin = 5,
             breakDurationMin = 20,
             testModeEnabled = false,
+            testModeChangeTrigger = "",
             cycleCompleted = false,
             onStartClick = {}, 
             onStopClick = {}, 
@@ -481,6 +487,7 @@ fun TimerScreenPreviewBreak() {
             maxAlarmIntervalMin = 5,
             breakDurationMin = 20,
             testModeEnabled = false,
+            testModeChangeTrigger = "",
             cycleCompleted = false,
             onStartClick = {}, 
             onStopClick = {}, 
@@ -507,6 +514,7 @@ fun TimerScreenPreviewEyeRest() {
             maxAlarmIntervalMin = 5,
             breakDurationMin = 20,
             testModeEnabled = false,
+            testModeChangeTrigger = "",
             cycleCompleted = false,
             onStartClick = {}, 
             onStopClick = {}, 

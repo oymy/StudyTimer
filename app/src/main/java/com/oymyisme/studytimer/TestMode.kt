@@ -8,9 +8,17 @@ package com.oymyisme.studytimer
 object TestMode {
     /**
      * 测试模式是否启用
+     * 
+     * 默认值从 BuildConfig.ENABLE_TEST_MODE 获取
+     * 但可以被 UI 中的开关控制
      */
-    val isEnabled: Boolean
-        get() = BuildConfig.ENABLE_TEST_MODE
+    private var _isEnabled: Boolean = BuildConfig.ENABLE_TEST_MODE
+    
+    var isEnabled: Boolean
+        get() = _isEnabled
+        set(value) {
+            _isEnabled = value
+        }
     
     // 测试模式的时间常量（毫秒）
     const val TEST_STUDY_TIME_MS = 30 * 1000L       // 30秒
