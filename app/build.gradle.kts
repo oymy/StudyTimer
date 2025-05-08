@@ -58,6 +58,13 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.runtime.livedata)
+    
+    // DataStore 依赖，用于主题设置的持久化存储
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
+    
+    // 扩展图标
+    implementation("androidx.compose.material:material-icons-extended:1.6.1")
+    
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

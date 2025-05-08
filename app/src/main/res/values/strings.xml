@@ -25,6 +25,18 @@
     
     <!-- Settings Screen -->
     <string name="settings_title">Settings</string>
+    <string name="theme_settings">Theme Settings</string>
+    <string name="theme_settings_description">Configure dark mode, dynamic colors, and more</string>
+    <string name="appearance_settings">Appearance</string>
+    <string name="back">Back</string>
+    <string name="theme_mode">Theme Mode</string>
+    <string name="theme_system">System default</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="dynamic_color">Dynamic Color</string>
+    <string name="dynamic_color_description">Use colors extracted from your wallpaper (Android 12+)</string>
+    <string name="amoled_black">AMOLED Black</string>
+    <string name="amoled_black_description">Use pure black in dark mode for AMOLED screens</string>
     <string name="timer_configuration">Timer Configuration</string>
     <string name="study_duration">Study Duration</string>
     <string name="study_duration_format">study %1$d min + break %2$d min</string>

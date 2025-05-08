@@ -3,6 +3,7 @@ package com.oymyisme.studytimer
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -43,7 +44,8 @@ fun SettingsScreen(
     onShowNextAlarmTimeChange: (Boolean) -> Unit,
     onAlarmSoundTypeChange: (String) -> Unit,
     onEyeRestSoundTypeChange: (String) -> Unit,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onNavigateToThemeSettings: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -63,6 +65,58 @@ fun SettingsScreen(
                 .padding(16.dp)
                 .fillMaxSize()
         ) {
+            // 主题设置卡片
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.appearance_settings),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    // 主题设置选项
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = stringResource(R.string.theme_settings),
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            Text(
+                                text = stringResource(R.string.theme_settings_description),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        
+                        IconButton(onClick = onNavigateToThemeSettings) {
+                            Icon(
+                                imageVector = Icons.Default.ArrowForward,
+                                contentDescription = "进入主题设置",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
+            }
+            
+            // 计时器设置卡片
             SettingsCard(
                 studyDurationFlow = studyDurationFlow,
                 minAlarmIntervalFlow = minAlarmIntervalFlow,
@@ -399,7 +453,8 @@ fun SettingsScreenPreview() {
             onShowNextAlarmTimeChange = {},
             onAlarmSoundTypeChange = {},
             onEyeRestSoundTypeChange = {},
-            onNavigateBack = {}
+            onNavigateBack = {},
+            onNavigateToThemeSettings = {}
         )
     }
 }

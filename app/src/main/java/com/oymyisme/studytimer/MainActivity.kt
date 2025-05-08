@@ -2,6 +2,7 @@ package com.oymyisme.studytimer
 
 import android.Manifest
 import android.content.ComponentName
+import android.content.ContentValues.TAG
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
@@ -15,16 +16,25 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import com.oymyisme.studytimer.settings.ThemeMode
+import com.oymyisme.studytimer.settings.ThemeSettings
+import com.oymyisme.studytimer.settings.ThemeSettingsScreen
 import com.oymyisme.studytimer.timer.TimerManager
 import com.oymyisme.studytimer.ui.theme.StudyTimerTheme
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlin.math.roundToInt
 import androidx.core.content.edit
 import androidx.compose.runtime.State
@@ -32,6 +42,9 @@ import androidx.compose.runtime.State
 class MainActivity : ComponentActivity() {
     private var studyTimerService: StudyTimerService? = null
     private var bound = false
+    
+    // 主题设置管理器
+    private lateinit var themeSettings: ThemeSettings
     
     // Service connection
     private val connection = object : ServiceConnection {
@@ -68,7 +81,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        
+
+        // 初始化主题设置管理器
+        themeSettings = ThemeSettings(this)
+
         // Check for notification permission on Android 13+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(
@@ -79,145 +95,188 @@ class MainActivity : ComponentActivity() {
                 requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
-        
+
         // Load settings from SharedPreferences
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         _studyDurationMin.value = prefs.getInt(KEY_STUDY_DURATION, 90)
         _minAlarmIntervalMin.value = prefs.getInt(KEY_MIN_ALARM, 3)
         _maxAlarmIntervalMin.value = prefs.getInt(KEY_MAX_ALARM, 5)
         _showNextAlarmTime.value = prefs.getBoolean(KEY_SHOW_NEXT_ALARM, false)
-        _alarmSoundType.value = prefs.getString(KEY_ALARM_SOUND, SoundOptions.DEFAULT_ALARM_SOUND_TYPE) ?: SoundOptions.DEFAULT_ALARM_SOUND_TYPE
-        _eyeRestSoundType.value = prefs.getString(KEY_EYE_REST_SOUND, SoundOptions.DEFAULT_EYE_REST_SOUND_TYPE) ?: SoundOptions.DEFAULT_EYE_REST_SOUND_TYPE
-        
+        _alarmSoundType.value =
+            prefs.getString(KEY_ALARM_SOUND, SoundOptions.DEFAULT_ALARM_SOUND_TYPE)
+                ?: SoundOptions.DEFAULT_ALARM_SOUND_TYPE
+        _eyeRestSoundType.value =
+            prefs.getString(KEY_EYE_REST_SOUND, SoundOptions.DEFAULT_EYE_REST_SOUND_TYPE)
+                ?: SoundOptions.DEFAULT_EYE_REST_SOUND_TYPE
+
         setContent {
-            StudyTimerTheme {
+            // 收集主题设置状态
+            val themeMode by themeSettings.themeMode.collectAsState(initial = ThemeMode.SYSTEM)
+            val dynamicColorEnabled by themeSettings.dynamicColor.collectAsState(initial = true)
+            val amoledBlackEnabled by themeSettings.amoledBlack.collectAsState(initial = false)
+
+            // 根据主题设置决定暗色模式
+            val darkTheme = when (themeMode) {
+                ThemeMode.SYSTEM -> isSystemInDarkTheme()
+                ThemeMode.DARK -> true
+                ThemeMode.LIGHT -> false
+            }
+
+            StudyTimerTheme(
+                darkTheme = darkTheme,
+                dynamicColor = dynamicColorEnabled,
+                amoledBlack = amoledBlackEnabled
+            ) {
                 val showSettings by _showSettings.collectAsState()
-                
-                if (showSettings) {
-                    // Show Settings Screen
-                    SettingsScreen(
-                        studyDurationFlow = _studyDurationMin,
-                        minAlarmIntervalFlow = _minAlarmIntervalMin,
-                        maxAlarmIntervalFlow = _maxAlarmIntervalMin,
-                        showNextAlarmTimeFlow = _showNextAlarmTime,
-                        alarmSoundTypeFlow = _alarmSoundType,
-                        eyeRestSoundTypeFlow = _eyeRestSoundType,
-                        onStudyDurationChange = { newDuration ->
-                            // Validate: Study duration >= min/max intervals
-                            val minInterval = _minAlarmIntervalMin.value
-                            val maxInterval = _maxAlarmIntervalMin.value
-                            if (newDuration >= minInterval && newDuration >= maxInterval) {
-                                _studyDurationMin.value = newDuration
-                            }
-                        },
-                        onMinAlarmIntervalChange = { newMinInterval ->
-                            // Validate: Min interval <= max interval && Min interval <= study duration
-                            val maxInterval = _maxAlarmIntervalMin.value
-                            val studyDuration = _studyDurationMin.value
-                            if (newMinInterval <= maxInterval && newMinInterval <= studyDuration) {
-                                _minAlarmIntervalMin.value = newMinInterval
-                            }
-                        },
-                        onMaxAlarmIntervalChange = { newMaxInterval ->
-                            // Validate: Max interval >= min interval && Max interval <= study duration
-                            val minInterval = _minAlarmIntervalMin.value
-                            val studyDuration = _studyDurationMin.value
-                            if (newMaxInterval in minInterval..studyDuration) {
-                                _maxAlarmIntervalMin.value = newMaxInterval
-                            }
-                        },
-                        onShowNextAlarmTimeChange = { show ->
-                            _showNextAlarmTime.value = show
-                        },
-                        onAlarmSoundTypeChange = { soundType ->
-                            _alarmSoundType.value = soundType
-                        },
-                        onEyeRestSoundTypeChange = { soundType ->
-                            _eyeRestSoundType.value = soundType
-                        },
-                        onNavigateBack = { _showSettings.value = false }
-                    )
-                } else {
-                    // Collect state from service if bound, otherwise use local UI state
-                    val serviceTimerState = studyTimerService?.timerState?.collectAsState()
-                    val serviceTimeLeftInSession: State<Long>? = studyTimerService?.timeLeftInSession?.collectAsState(0L)
-                    val serviceTimeUntilNextAlarm: State<Long>? = studyTimerService?.timeUntilNextAlarm?.collectAsState(0L)
-                    val serviceElapsedTimeInFullCycle: State<Long>? = studyTimerService?.elapsedTimeInFullCycleMillis?.collectAsState(0L)
-                    
-                    val uiTimerStateState = uiTimerState.collectAsState(TimerManager.TimerState.IDLE)
-                    val uiTimeLeftInSessionState = uiTimeLeftInSession.collectAsState(0L)
-                    val uiTimeUntilNextAlarmState = uiTimeUntilNextAlarm.collectAsState(0L)
-                    
-                    // Use service state if available, otherwise use UI state
-                    val timerState = serviceTimerState?.value ?: uiTimerStateState.value
-                    val timeLeftInSession = serviceTimeLeftInSession?.value ?: uiTimeLeftInSessionState.value
-                    val timeUntilNextAlarm = serviceTimeUntilNextAlarm?.value ?: uiTimeUntilNextAlarmState.value
-                    val elapsedTimeInFullCycle = serviceElapsedTimeInFullCycle?.value ?: 0L
-                    val showNextAlarm = showNextAlarmTime.collectAsState().value
-                    // Collect current settings values
-                    val currentStudyDuration = _studyDurationMin.collectAsState().value
-                    val currentMinInterval = _minAlarmIntervalMin.collectAsState().value
-                    val currentMaxInterval = _maxAlarmIntervalMin.collectAsState().value
-                    // Calculate break duration
-                    val currentBreakDuration = calculateBreakDuration(currentStudyDuration)
-                    
-                    StudyTimerApp(
-                        timerState = timerState,
-                        timeLeftInSession = timeLeftInSession,
-                        timeUntilNextAlarm = timeUntilNextAlarm,
-                        elapsedTimeInFullCycle = elapsedTimeInFullCycle,
-                        showNextAlarmTime = showNextAlarm,
-                        studyDurationMin = currentStudyDuration, // Pass setting
-                        minAlarmIntervalMin = currentMinInterval, // Pass setting
-                        maxAlarmIntervalMin = currentMaxInterval, // Pass setting
-                        breakDurationMin = currentBreakDuration, // Pass calculated break duration
-                        testModeEnabled = _testModeEnabled.value, // Pass test mode state
-                        testModeChangeTrigger = _testModeChangeTrigger.collectAsState().value, // 传递测试模式变化触发器
-                        cycleCompleted = cycleCompleted.collectAsState().value, // 传递周期完成状态
-                        onStartClick = { startStudySession() },
-                        onStopClick = { stopStudySession() },
-                        onSettingsClick = { _showSettings.value = true }, // Navigate to settings
-                        onTestModeToggle = { enabled ->
-                            // 更新测试模式状态
-                            _testModeEnabled.value = enabled
-                            
-                            // 更新 TestMode 类中的 isEnabled 属性
-                            TestMode.isEnabled = enabled
-                            
-                            // 更新触发器值，强制 UI 重组
-                            _testModeChangeTrigger.value = System.currentTimeMillis().toString()
-                            
-                            // 直接通知服务更新测试模式状态，但不开始新的学习周期
-                            studyTimerService?.let { service ->
-                                // 直接更新服务中的测试模式状态
-                                service.updateTestMode(enabled, _studyDurationMin.value)
-                                
-                                // 如果当前是 IDLE 状态，强制更新 UI 显示
-                                if (uiTimerState.value == TimerManager.TimerState.IDLE) {
-                                    // 强制更新 UI 显示
-                                    uiTimeLeftInSession.value = service.timeLeftInSession.value ?: 0L
+                val showThemeSettings by _showThemeSettings.collectAsState()
+
+                when {
+                    showThemeSettings -> {
+                        // 显示主题设置界面
+                        ThemeSettingsScreen(
+                            themeSettings = themeSettings,
+                            onNavigateBack = { _showThemeSettings.value = false }
+                        )
+                    }
+
+                    showSettings -> {
+                        // 显示常规设置界面
+                        SettingsScreen(
+                            studyDurationFlow = _studyDurationMin,
+                            minAlarmIntervalFlow = _minAlarmIntervalMin,
+                            maxAlarmIntervalFlow = _maxAlarmIntervalMin,
+                            showNextAlarmTimeFlow = _showNextAlarmTime,
+                            alarmSoundTypeFlow = _alarmSoundType,
+                            eyeRestSoundTypeFlow = _eyeRestSoundType,
+                            onNavigateToThemeSettings = { _showThemeSettings.value = true },
+                            onStudyDurationChange = { newDuration ->
+                                // Validate: Study duration >= min/max intervals
+                                val minInterval = _minAlarmIntervalMin.value
+                                val maxInterval = _maxAlarmIntervalMin.value
+                                if (newDuration >= minInterval && newDuration >= maxInterval) {
+                                    _studyDurationMin.value = newDuration
                                 }
+                            },
+                            onMinAlarmIntervalChange = { newMinInterval ->
+                                // Validate: Min interval <= max interval && Min interval <= study duration
+                                val maxInterval = _maxAlarmIntervalMin.value
+                                val studyDuration = _studyDurationMin.value
+                                if (newMinInterval <= maxInterval && newMinInterval <= studyDuration) {
+                                    _minAlarmIntervalMin.value = newMinInterval
+                                }
+                            },
+                            onMaxAlarmIntervalChange = { newMaxInterval ->
+                                // Validate: Max interval >= min interval && Max interval <= study duration
+                                val minInterval = _minAlarmIntervalMin.value
+                                val studyDuration = _studyDurationMin.value
+                                if (newMaxInterval in minInterval..studyDuration) {
+                                    _maxAlarmIntervalMin.value = newMaxInterval
+                                }
+                            },
+                            onShowNextAlarmTimeChange = { show ->
+                                _showNextAlarmTime.value = show
+                            },
+                            onAlarmSoundTypeChange = { soundType ->
+                                _alarmSoundType.value = soundType
+                            },
+                            onEyeRestSoundTypeChange = { soundType ->
+                                _eyeRestSoundType.value = soundType
+                            },
+                            onNavigateBack = { _showSettings.value = false }
+                        )
+                    }
+                    
+                    else -> {
+                        // Collect state from service if bound, otherwise use local UI state
+                        val serviceTimerState = studyTimerService?.timerState?.collectAsState()
+                        val serviceTimeLeftInSession: State<Long>? =
+                            studyTimerService?.timeLeftInSession?.collectAsState(0L)
+                        val serviceTimeUntilNextAlarm: State<Long>? =
+                            studyTimerService?.timeUntilNextAlarm?.collectAsState(0L)
+                        val serviceElapsedTimeInFullCycle: State<Long>? =
+                            studyTimerService?.elapsedTimeInFullCycleMillis?.collectAsState(0L)
+
+                        val uiTimerStateState =
+                            uiTimerState.collectAsState(TimerManager.TimerState.IDLE)
+                        val uiTimeLeftInSessionState = uiTimeLeftInSession.collectAsState(0L)
+                        val uiTimeUntilNextAlarmState = uiTimeUntilNextAlarm.collectAsState(0L)
+
+                        // Use service state if available, otherwise use UI state
+                        val timerState = serviceTimerState?.value ?: uiTimerStateState.value
+                        val timeLeftInSession =
+                            serviceTimeLeftInSession?.value ?: uiTimeLeftInSessionState.value
+                        val timeUntilNextAlarm =
+                            serviceTimeUntilNextAlarm?.value ?: uiTimeUntilNextAlarmState.value
+                        val elapsedTimeInFullCycle = serviceElapsedTimeInFullCycle?.value ?: 0L
+                        val showNextAlarm = showNextAlarmTime.collectAsState().value
+                        // Collect current settings values
+                        val currentStudyDuration = _studyDurationMin.collectAsState().value
+                        val currentMinInterval = _minAlarmIntervalMin.collectAsState().value
+                        val currentMaxInterval = _maxAlarmIntervalMin.collectAsState().value
+                        // Calculate break duration
+                        val currentBreakDuration = calculateBreakDuration(currentStudyDuration)
+
+                        StudyTimerApp(
+                            timerState = timerState,
+                            timeLeftInSession = timeLeftInSession,
+                            timeUntilNextAlarm = timeUntilNextAlarm,
+                            elapsedTimeInFullCycle = elapsedTimeInFullCycle,
+                            showNextAlarmTime = showNextAlarm,
+                            studyDurationMin = currentStudyDuration, // Pass setting
+                            minAlarmIntervalMin = currentMinInterval, // Pass setting
+                            maxAlarmIntervalMin = currentMaxInterval, // Pass setting
+                            breakDurationMin = currentBreakDuration, // Pass calculated break duration
+                            testModeEnabled = _testModeEnabled.value, // Pass test mode state
+                            testModeChangeTrigger = _testModeChangeTrigger.collectAsState().value, // 传递测试模式变化触发器
+                            cycleCompleted = cycleCompleted.collectAsState().value, // 传递周期完成状态
+                            onStartClick = { startStudySession() },
+                            onStopClick = { stopStudySession() },
+                            onSettingsClick = {
+                                _showSettings.value = true
+                            }, // Navigate to settings
+                            onTestModeToggle = { enabled ->
+                                // 更新测试模式状态
+                                _testModeEnabled.value = enabled
+
+                                // 更新 TestMode 类中的 isEnabled 属性
+                                TestMode.isEnabled = enabled
+
+                                // 更新触发器值，强制 UI 重组
+                                _testModeChangeTrigger.value = System.currentTimeMillis().toString()
+
+                                // 直接通知服务更新测试模式状态，但不开始新的学习周期
+                                studyTimerService?.let { service ->
+                                    // 直接更新服务中的测试模式状态
+                                    service.updateTestMode(enabled, _studyDurationMin.value)
+
+                                    // 如果当前是 IDLE 状态，强制更新 UI 显示
+                                    if (uiTimerState.value == TimerManager.TimerState.IDLE) {
+                                        // 强制更新 UI 显示
+                                        uiTimeLeftInSession.value =
+                                            service.timeLeftInSession.value ?: 0L
+                                    }
+                                }
+
+                                // 立即显示更新结果
+                                Toast.makeText(
+                                    this@MainActivity,
+                                    if (enabled) "测试模式已启用" else "测试模式已关闭",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }, // Handle test mode toggle
+                            onContinueNextCycle = {
+                                // 用户选择继续下一个周期
+                                _cycleCompleted.value = false
+                                studyTimerService?.resetCycleCompleted()
+                                startStudySession()
+                            },
+                            onReturnToMain = {
+                                // 用户选择返回主界面
+                                _cycleCompleted.value = false
+                                studyTimerService?.resetCycleCompleted()
                             }
-                            
-                            // 立即显示更新结果
-                            Toast.makeText(
-                                this@MainActivity,
-                                if (enabled) "测试模式已启用" else "测试模式已关闭",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }, // Handle test mode toggle
-                        onContinueNextCycle = {
-                            // 用户选择继续下一个周期
-                            _cycleCompleted.value = false
-                            studyTimerService?.resetCycleCompleted()
-                            startStudySession()
-                        },
-                        onReturnToMain = {
-                            // 用户选择返回主界面
-                            _cycleCompleted.value = false
-                            studyTimerService?.resetCycleCompleted()
-                        }
-                    )
+                        )
+                    }
                 }
             }
         }
@@ -291,8 +350,9 @@ class MainActivity : ComponentActivity() {
     // 周期完成状态，用于显示结束对话框
     private val _cycleCompleted = MutableStateFlow(false)
     
-    // Navigation state flow
+    // Navigation state flows
     private val _showSettings = MutableStateFlow(false)
+    private val _showThemeSettings = MutableStateFlow(false)
     
     private val uiTimerState: MutableStateFlow<TimerManager.TimerState> = _uiTimerState
     private val uiTimeLeftInSession: MutableStateFlow<Long> = _uiTimeLeftInSession

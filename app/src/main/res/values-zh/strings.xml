@@ -26,6 +26,18 @@
     
     <!-- Settings Screen -->
     <string name="settings_title">设置</string>
+    <string name="theme_settings">主题设置</string>
+    <string name="theme_settings_description">配置暗色模式、动态颜色等</string>
+    <string name="appearance_settings">外观</string>
+    <string name="back">返回</string>
+    <string name="theme_mode">主题模式</string>
+    <string name="theme_system">跟随系统</string>
+    <string name="theme_light">浅色模式</string>
+    <string name="theme_dark">深色模式</string>
+    <string name="dynamic_color">动态颜色</string>
+    <string name="dynamic_color_description">使用从壁纸提取的颜色（Android 12+）</string>
+    <string name="amoled_black">纯黑模式</string>
+    <string name="amoled_black_description">在深色模式下使用纯黑色，适合 AMOLED 屏幕</string>
     <string name="timer_configuration">计时器配置</string>
     <string name="study_duration">学习时长</string>
     <string name="study_duration_format">学习 %1$d 分钟 + 休息 %2$d 分钟</string>
