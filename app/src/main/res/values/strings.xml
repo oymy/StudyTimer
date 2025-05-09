@@ -38,6 +38,7 @@
     <string name="amoled_black">AMOLED Black</string>
     <string name="amoled_black_description">Use pure black in dark mode for AMOLED screens</string>
     <string name="timer_configuration">Timer Configuration</string>
+    <string name="timer_settings_title">Timer Settings</string>
     <string name="study_duration">Study Duration</string>
     <string name="study_duration_format">study %1$d min + break %2$d min</string>
     <string name="alarm_configuration">Alarm Configuration</string>

@@ -48,21 +48,22 @@ private fun calculateBreakDuration(studyDuration: Int): Int {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    studyDurationFlow: StateFlow<Int>,
-    minAlarmIntervalFlow: StateFlow<Int>,
-    maxAlarmIntervalFlow: StateFlow<Int>,
-    showNextAlarmTimeFlow: StateFlow<Boolean>,
-    alarmSoundTypeFlow: StateFlow<String>,
-    eyeRestSoundTypeFlow: StateFlow<String>,
-    onStudyDurationChange: (Int) -> Unit,
-    onMinAlarmIntervalChange: (Int) -> Unit,
-    onMaxAlarmIntervalChange: (Int) -> Unit,
-    onShowNextAlarmTimeChange: (Boolean) -> Unit,
-    onAlarmSoundTypeChange: (String) -> Unit,
-    onEyeRestSoundTypeChange: (String) -> Unit,
+    timerSettings: StateFlow<com.oymyisme.model.TimerSettings>,
+    onSettingsChange: (com.oymyisme.model.TimerSettings) -> Unit,
     onNavigateBack: () -> Unit,
     onNavigateToThemeSettings: () -> Unit
 ) {
+    // 收集当前设置状态
+    val currentSettings by timerSettings.collectAsState()
+    
+    // 创建本地可变状态，用于在用户交互时临时存储更改
+    var localSettings by remember { mutableStateOf(currentSettings) }
+    
+    // 当上游设置变化时更新本地设置
+    LaunchedEffect(currentSettings) {
+        localSettings = currentSettings
+    }
+    
     Scaffold(
         topBar = {
             SettingsTopBar(
@@ -86,20 +87,13 @@ fun SettingsScreen(
                 onNavigateToThemeSettings = onNavigateToThemeSettings
             )
             
-            // 计时器设置卡片
-            SettingsCard(
-                studyDurationFlow = studyDurationFlow,
-                minAlarmIntervalFlow = minAlarmIntervalFlow,
-                maxAlarmIntervalFlow = maxAlarmIntervalFlow,
-                showNextAlarmTimeFlow = showNextAlarmTimeFlow,
-                onStudyDurationChange = onStudyDurationChange,
-                onMinAlarmIntervalChange = onMinAlarmIntervalChange,
-                onMaxAlarmIntervalChange = onMaxAlarmIntervalChange,
-                onShowNextAlarmTimeChange = onShowNextAlarmTimeChange,
-                alarmSoundTypeFlow = alarmSoundTypeFlow,
-                eyeRestSoundTypeFlow = eyeRestSoundTypeFlow,
-                onAlarmSoundTypeChange = onAlarmSoundTypeChange,
-                onEyeRestSoundTypeChange = onEyeRestSoundTypeChange
+            // 计时器设置卡片 - 使用新的数据结构
+            TimerSettingsCard(
+                settings = localSettings,
+                onSettingsChange = { updatedSettings ->
+                    localSettings = updatedSettings
+                    onSettingsChange(updatedSettings)
+                }
             )
         }
     }
@@ -198,86 +192,130 @@ private fun ThemeSettingsOption(
 }
 
 @Composable
-fun SettingsCard(
-    studyDurationFlow: StateFlow<Int>,
-    minAlarmIntervalFlow: StateFlow<Int>,
-    maxAlarmIntervalFlow: StateFlow<Int>,
-    showNextAlarmTimeFlow: StateFlow<Boolean>,
-    alarmSoundTypeFlow: StateFlow<String>,
-    eyeRestSoundTypeFlow: StateFlow<String>,
-    onStudyDurationChange: (Int) -> Unit,
-    onMinAlarmIntervalChange: (Int) -> Unit,
-    onMaxAlarmIntervalChange: (Int) -> Unit,
-    onShowNextAlarmTimeChange: (Boolean) -> Unit,
-    onAlarmSoundTypeChange: (String) -> Unit,
-    onEyeRestSoundTypeChange: (String) -> Unit
+fun TimerSettingsCard(
+    settings: com.oymyisme.model.TimerSettings,
+    onSettingsChange: (com.oymyisme.model.TimerSettings) -> Unit
 ) {
-    // Observe the flows to get the current state values
-    val studyDurationMin by studyDurationFlow.collectAsState()
-    val minAlarmIntervalMin by minAlarmIntervalFlow.collectAsState()
-    val maxAlarmIntervalMin by maxAlarmIntervalFlow.collectAsState()
-    val showNextAlarmTime by showNextAlarmTimeFlow.collectAsState()
-    val alarmSoundType by alarmSoundTypeFlow.collectAsState()
-    val eyeRestSoundType by eyeRestSoundTypeFlow.collectAsState()
+    // 获取提示音选项
+    val soundOptions = SoundOptions.getSoundOptions(LocalContext.current)
     
-    // 获取系统提示音列表
-    val context = LocalContext.current
-    val soundOptions = remember { SoundOptions.getSoundOptions(context) }
-
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(8.dp),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
+            .padding(vertical = 8.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(16.dp)
     ) {
         Column(
             modifier = Modifier
+                .padding(16.dp)
                 .fillMaxWidth()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.Start
         ) {
-            // 计时器配置标题
-            SectionTitle(title = stringResource(R.string.timer_configuration))
+            Text(
+                text = stringResource(R.string.timer_settings_title),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
             
             // 学习时间设置
             StudyDurationSection(
-                studyDurationMin = studyDurationMin,
-                onStudyDurationChange = onStudyDurationChange
+                studyDurationMin = settings.studyDurationMin,
+                onStudyDurationChange = { newDuration ->
+                    onSettingsChange(settings.copy(studyDurationMin = newDuration))
+                }
             )
             
-            Spacer(modifier = Modifier.height(16.dp))
+            SectionDivider()
             
             // 闹钟间隔设置
             AlarmIntervalSection(
-                minAlarmIntervalMin = minAlarmIntervalMin,
-                maxAlarmIntervalMin = maxAlarmIntervalMin,
-                onMinAlarmIntervalChange = onMinAlarmIntervalChange,
-                onMaxAlarmIntervalChange = onMaxAlarmIntervalChange
+                minAlarmIntervalMin = settings.minAlarmIntervalMin,
+                maxAlarmIntervalMin = settings.maxAlarmIntervalMin,
+                onMinAlarmIntervalChange = { newMinInterval ->
+                    onSettingsChange(settings.copy(minAlarmIntervalMin = newMinInterval))
+                },
+                onMaxAlarmIntervalChange = { newMaxInterval ->
+                    onSettingsChange(settings.copy(maxAlarmIntervalMin = newMaxInterval))
+                }
             )
-
+            
             SectionDivider()
-
+            
             // 显示下一次闹钟时间开关
             ShowNextAlarmSwitch(
-                showNextAlarmTime = showNextAlarmTime,
-                onShowNextAlarmTimeChange = onShowNextAlarmTimeChange
+                showNextAlarmTime = settings.showNextAlarmTime,
+                onShowNextAlarmTimeChange = { showNextAlarm ->
+                    onSettingsChange(settings.copy(showNextAlarmTime = showNextAlarm))
+                }
             )
             
             SectionDivider()
             
-            // 提示音设置部分
+            // 提示音设置
             SoundSettingsSection(
-                alarmSoundType = alarmSoundType,
-                eyeRestSoundType = eyeRestSoundType,
+                alarmSoundType = settings.alarmSoundType,
+                eyeRestSoundType = settings.eyeRestSoundType,
                 soundOptions = soundOptions,
-                onAlarmSoundTypeChange = onAlarmSoundTypeChange,
-                onEyeRestSoundTypeChange = onEyeRestSoundTypeChange
+                onAlarmSoundTypeChange = { newAlarmSoundType ->
+                    onSettingsChange(settings.copy(alarmSoundType = newAlarmSoundType))
+                },
+                onEyeRestSoundTypeChange = { newEyeRestSoundType ->
+                    onSettingsChange(settings.copy(eyeRestSoundType = newEyeRestSoundType))
+                }
+            )
+            
+            SectionDivider()
+            
+            // 测试模式开关
+            TestModeSwitch(
+                testModeEnabled = settings.testModeEnabled,
+                onTestModeEnabledChange = { enabled ->
+                    onSettingsChange(settings.copy(testModeEnabled = enabled))
+                }
             )
         }
+    }
+}
+
+/**
+ * 测试模式开关
+ */
+@Composable
+fun TestModeSwitch(
+    testModeEnabled: Boolean,
+    onTestModeEnabledChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                text = stringResource(R.string.test_mode),
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                text = stringResource(R.string.test_mode_description),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Switch(
+            checked = testModeEnabled,
+            onCheckedChange = onTestModeEnabledChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = MaterialTheme.colorScheme.primary,
+                checkedTrackColor = MaterialTheme.colorScheme.primaryContainer,
+                uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        )
     }
 }
 
@@ -601,19 +639,20 @@ private fun formatStudyDurationWithBreak(studyDuration: Int): String {
 @Composable
 fun SettingsScreenPreview() {
     StudyTimerTheme {
+        // 创建一个默认的TimerSettings实例用于预览
+        val defaultSettings = com.oymyisme.model.TimerSettings(
+            studyDurationMin = 90,
+            minAlarmIntervalMin = 3,
+            maxAlarmIntervalMin = 5,
+            showNextAlarmTime = false,
+            alarmSoundType = SoundOptions.DEFAULT_ALARM_SOUND_TYPE,
+            eyeRestSoundType = SoundOptions.DEFAULT_EYE_REST_SOUND_TYPE,
+            testModeEnabled = false
+        )
+        
         SettingsScreen(
-            studyDurationFlow = MutableStateFlow(90),
-            minAlarmIntervalFlow = MutableStateFlow(3),
-            maxAlarmIntervalFlow = MutableStateFlow(5),
-            showNextAlarmTimeFlow = MutableStateFlow(false),
-            alarmSoundTypeFlow = MutableStateFlow(SoundOptions.DEFAULT_ALARM_SOUND_TYPE),
-            eyeRestSoundTypeFlow = MutableStateFlow(SoundOptions.DEFAULT_EYE_REST_SOUND_TYPE),
-            onStudyDurationChange = {},
-            onMinAlarmIntervalChange = {},
-            onMaxAlarmIntervalChange = {},
-            onShowNextAlarmTimeChange = {},
-            onAlarmSoundTypeChange = {},
-            onEyeRestSoundTypeChange = {},
+            timerSettings = MutableStateFlow(defaultSettings),
+            onSettingsChange = {},
             onNavigateBack = {},
             onNavigateToThemeSettings = {}
         )

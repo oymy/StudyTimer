@@ -54,6 +54,46 @@ private fun formatTime(millis: Long): String {
 
 /**
  * 计时器显示组件，负责显示倒计时和进度
+ * 使用新的数据结构来减少参数传递
+ * 遵循高内聚、低耦合的设计原则
+ */
+@Composable
+private fun TimerDisplayWithDataClasses(
+    timerState: com.oymyisme.model.TimerState,
+    settings: com.oymyisme.model.TimerSettings,
+    breakDurationMin: Int,
+    isTestModeActive: Boolean
+) {
+    // 计算总周期时长（学习+休息）
+    val totalCycleDurationMs = if (isTestModeActive) {
+        // 测试模式下的总周期时长
+        TestMode.TEST_STUDY_TIME_MS + TestMode.TEST_BREAK_TIME_MS
+    } else {
+        // 非测试模式下的总周期时长
+        settings.studyDurationMin * 60 * 1000L + breakDurationMin * 60 * 1000L
+    }
+    
+    // 使用新的辅助函数计算进度
+    val progress = calculateProgressWithDataClasses(
+        timerState = timerState,
+        totalCycleDurationMs = totalCycleDurationMs
+    )
+    
+    // 调用原有的TimerDisplay组件，传递解析后的参数
+    TimerDisplay(
+        timerState = timerState.timerState,
+        timeLeftInSession = timerState.timeLeftInSession,
+        timeUntilNextAlarm = timerState.timeUntilNextAlarm,
+        elapsedTimeInFullCycle = timerState.elapsedTimeInFullCycle,
+        showNextAlarmTime = settings.showNextAlarmTime,
+        studyDurationMin = settings.studyDurationMin,
+        breakDurationMin = breakDurationMin,
+        isTestModeActive = isTestModeActive
+    )
+}
+
+/**
+ * 计时器显示组件，负责显示倒计时和进度
  */
 @Composable
 private fun TimerDisplay(
@@ -168,6 +208,20 @@ private fun TimerDisplay(
 }
 
 /**
+ * 计算循环进度 - 使用新的数据结构
+ */
+private fun calculateProgressWithDataClasses(
+    timerState: com.oymyisme.model.TimerState,
+    totalCycleDurationMs: Long
+): Float {
+    return calculateProgress(
+        timerState = timerState.timerState,
+        elapsedTimeInFullCycle = timerState.elapsedTimeInFullCycle,
+        totalCycleDurationMs = totalCycleDurationMs
+    )
+}
+
+/**
  * 计算循环进度
  */
 private fun calculateProgress(
@@ -188,6 +242,27 @@ private fun calculateProgress(
         }
         TimerManager.TimerState.IDLE -> 0f // 空闲状态显示空圈
     }
+}
+
+/**
+ * 计算总周期剩余时间 - 使用新的数据结构
+ */
+private fun calculateTotalCycleTimeLeftWithDataClasses(
+    timerState: com.oymyisme.model.TimerState,
+    totalCycleDurationMs: Long,
+    breakDurationMin: Int,
+    studyDurationMin: Int,
+    isTestModeActive: Boolean
+): Long {
+    return calculateTotalCycleTimeLeft(
+        timerState = timerState.timerState,
+        timeLeftInSession = timerState.timeLeftInSession,
+        elapsedTimeInFullCycle = timerState.elapsedTimeInFullCycle,
+        totalCycleDurationMs = totalCycleDurationMs,
+        breakDurationMin = breakDurationMin,
+        studyDurationMin = studyDurationMin,
+        isTestModeActive = isTestModeActive
+    )
 }
 
 /**
@@ -337,10 +412,10 @@ private fun StartStopButton(
 }
 
 /**
- * 测试模式开关组件
+ * 测试模式开关组件 - 计时器屏幕版本
  */
 @Composable
-private fun TestModeSwitch(
+private fun TimerTestModeSwitch(
     testModeEnabled: Boolean,
     onTestModeToggle: (Boolean) -> Unit
 ) {
@@ -393,6 +468,7 @@ private fun TestModeSwitch(
 
 /**
  * The main UI composable for the Timer screen.
+ * 使用新的数据结构来简化参数传递
  */
 @Composable
 fun StudyTimerApp(
@@ -414,12 +490,66 @@ fun StudyTimerApp(
     onTestModeToggle: (Boolean) -> Unit = {},
     onContinueNextCycle: () -> Unit = {},
     onReturnToMain: () -> Unit = {}
-) {
+)
+{
     // 定义一个变量来存储是否在测试模式下，避免重复检查
     val isTestModeActive = testModeEnabled && TestMode.isEnabled
+    
+    // 将原始参数映射到新的数据结构
+    val currentTimerState = com.oymyisme.model.TimerState(
+        timerState = timerState,
+        timeLeftInSession = timeLeftInSession,
+        timeUntilNextAlarm = timeUntilNextAlarm,
+        elapsedTimeInFullCycle = elapsedTimeInFullCycle,
+        cycleCompleted = cycleCompleted
+    )
+    
+    val currentSettings = com.oymyisme.model.TimerSettings(
+        studyDurationMin = studyDurationMin,
+        minAlarmIntervalMin = minAlarmIntervalMin,
+        maxAlarmIntervalMin = maxAlarmIntervalMin,
+        showNextAlarmTime = showNextAlarmTime,
+        testModeEnabled = testModeEnabled,
+        // 使用默认值
+        alarmSoundType = SoundOptions.DEFAULT_ALARM_SOUND_TYPE,
+        eyeRestSoundType = SoundOptions.DEFAULT_EYE_REST_SOUND_TYPE
+    )
+    
+    // 使用新的数据结构调用内部实现
+    StudyTimerAppImpl(
+        timerState = currentTimerState,
+        settings = currentSettings,
+        testModeChangeTrigger = testModeChangeTrigger,
+        onStartClick = onStartClick,
+        onStopClick = onStopClick,
+        onSettingsClick = onSettingsClick,
+        onTestModeToggle = onTestModeToggle,
+        onContinueNextCycle = onContinueNextCycle,
+        onReturnToMain = onReturnToMain
+    )
+}
+
+/**
+ * StudyTimerApp的内部实现，使用新的数据结构
+ */
+@Composable
+private fun StudyTimerAppImpl(
+    timerState: com.oymyisme.model.TimerState,
+    settings: com.oymyisme.model.TimerSettings,
+    testModeChangeTrigger: String = "",
+    onStartClick: () -> Unit,
+    onStopClick: () -> Unit,
+    onSettingsClick: () -> Unit,
+    onTestModeToggle: (Boolean) -> Unit = {},
+    onContinueNextCycle: () -> Unit = {},
+    onReturnToMain: () -> Unit = {}
+) {
+    // 定义一个变量来存储是否在测试模式下，避免重复检查
+    val isTestModeActive = settings.testModeEnabled && TestMode.isEnabled
+    
     // 周期完成对话框
-    if (cycleCompleted) {
-        Log.d("TimerScreen", "Showing cycle completed dialog, cycleCompleted=$cycleCompleted")
+    if (timerState.cycleCompleted) {
+        Log.d("TimerScreen", "Showing cycle completed dialog, cycleCompleted=${timerState.cycleCompleted}")
         Box(modifier = Modifier.fillMaxSize()) {
             CycleCompletedDialog(
                 onContinueNextCycle = onContinueNextCycle,
@@ -428,20 +558,7 @@ fun StudyTimerApp(
         }
     }
 
-    /**
-     * Helper function to format time in milliseconds to HH:MM:SS or MM:SS format.
-     */
-    fun formatTime(millis: Long): String {
-        val hours = TimeUnit.MILLISECONDS.toHours(millis)
-        val minutes = TimeUnit.MILLISECONDS.toMinutes(millis) % 60
-        val seconds = TimeUnit.MILLISECONDS.toSeconds(millis) % 60
-
-        return if (hours > 0) {
-            String.format(Locale.ENGLISH, "%02d:%02d:%02d", hours, minutes, seconds)
-        } else {
-            String.format(Locale.ENGLISH, "%02d:%02d", minutes, seconds)
-        }
-    }
+    // 使用全局格式化时间函数，避免重复定义
 
     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
         Surface(
@@ -475,57 +592,45 @@ fun StudyTimerApp(
                     // 移除多余的Spacer，因为我们已经使用Arrangement.spacedBy来控制间距
 
                     // Timer Display (CircularProgressIndicator + Text)
-                    TimerDisplay(
+                    TimerDisplayWithDataClasses(
                         timerState = timerState,
-                        timeLeftInSession = timeLeftInSession,
-                        timeUntilNextAlarm = timeUntilNextAlarm,
-                        elapsedTimeInFullCycle = elapsedTimeInFullCycle,
-                        showNextAlarmTime = showNextAlarmTime,
-                        studyDurationMin = studyDurationMin,
-                        breakDurationMin = breakDurationMin,
+                        settings = settings,
+                        breakDurationMin = settings.breakDurationMin,
                         isTestModeActive = isTestModeActive
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // Instructions
+                    // 状态文本显示
+                    val statusText = when (timerState.timerState) {
+                        TimerManager.TimerState.STUDYING -> stringResource(
+                            R.string.state_studying,
+                            settings.minAlarmIntervalMin,
+                            settings.maxAlarmIntervalMin
+                        )
+                        TimerManager.TimerState.BREAK -> stringResource(R.string.state_break)
+                        TimerManager.TimerState.EYE_REST -> stringResource(R.string.state_eye_rest)
+                        TimerManager.TimerState.IDLE -> if (isTestModeActive) {
+                            stringResource(
+                                R.string.state_idle_test,
+                                TestMode.getStudyDurationSec(),
+                                TestMode.getBreakDurationSec(),
+                                TestMode.getMinAlarmIntervalSec(),
+                                TestMode.getMaxAlarmIntervalSec()
+                            )
+                        } else {
+                            stringResource(
+                                R.string.state_idle_normal,
+                                settings.studyDurationMin,
+                                settings.breakDurationMin,
+                                settings.minAlarmIntervalMin,
+                                settings.maxAlarmIntervalMin
+                            )
+                        }
+                    }
                     Text(
-                        text = when (timerState) {
-                            TimerManager.TimerState.STUDYING ->
-                                stringResource(
-                                    R.string.state_studying,
-                                    minAlarmIntervalMin,
-                                    maxAlarmIntervalMin
-                                )
-
-                            TimerManager.TimerState.BREAK ->
-                                stringResource(R.string.state_break)
-
-                            TimerManager.TimerState.EYE_REST ->
-                                stringResource(R.string.state_eye_rest)
-
-                            TimerManager.TimerState.IDLE -> {
-                                if (isTestModeActive) {
-                                    // 测试模式下显示测试时间
-                                    stringResource(
-                                        R.string.state_idle_test,
-                                        TestMode.getStudyDurationSec(),
-                                        TestMode.getBreakDurationSec(),
-                                        TestMode.getMinAlarmIntervalSec(),
-                                        TestMode.getMaxAlarmIntervalSec()
-                                    )
-                                } else {
-                                    // 非测试模式下显示实际设置的学习周期
-                                    stringResource(
-                                        R.string.state_idle_normal,
-                                        studyDurationMin,
-                                        breakDurationMin,
-                                        minAlarmIntervalMin,
-                                        maxAlarmIntervalMin
-                                    )
-                                }
-                            }
-                        },
+                        text = statusText,
                         fontSize = 14.sp,
                         textAlign = TextAlign.Center,
                         color = Color.Gray,
@@ -534,18 +639,19 @@ fun StudyTimerApp(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // 测试模式开关 - 只在debug模式下的空闲状态显示
-                    if (timerState == TimerManager.TimerState.IDLE && BuildConfig.DEBUG) {
-                        TestModeSwitch(
-                            testModeEnabled = testModeEnabled,
+                    // 测试模式开关 - 仅在空闲状态下显示
+                    if (timerState.timerState == TimerManager.TimerState.IDLE) {
+                        TimerTestModeSwitch(
+                            testModeEnabled = settings.testModeEnabled,
                             onTestModeToggle = onTestModeToggle
                         )
-                        Spacer(modifier = Modifier.height(16.dp))
                     }
 
-                    // Control buttons
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // 控制按钮
                     ControlButtons(
-                        timerState = timerState,
+                        timerState = timerState.timerState,
                         onSettingsClick = onSettingsClick,
                         onStartClick = onStartClick,
                         onStopClick = onStopClick

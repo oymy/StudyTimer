@@ -39,6 +39,7 @@
     <string name="amoled_black">纯黑模式</string>
     <string name="amoled_black_description">在深色模式下使用纯黑色，适合 AMOLED 屏幕</string>
     <string name="timer_configuration">计时器配置</string>
+    <string name="timer_settings_title">计时器设置</string>
     <string name="study_duration">学习时长</string>
     <string name="study_duration_format">学习 %1$d 分钟 + 休息 %2$d 分钟</string>
     <string name="alarm_configuration">闹钟配置</string>
