@@ -243,8 +243,8 @@ class MainActivity : ComponentActivity() {
                         val currentTimerState = _timerState.collectAsState().value
                         val currentSettings = _timerSettings.collectAsState().value
                         
-                        // 计算休息时间
-                        val breakDurationMin = calculateBreakDuration(currentSettings.studyDurationMin)
+                        // 直接使用TimerSettings中的breakDurationMin属性，提高代码内聚性
+                        val breakDurationMin = currentSettings.breakDurationMin
                         
                         // 直接使用数据类传递给UI组件，提高代码可维护性
                         StudyTimerApp(
@@ -359,15 +359,8 @@ class MainActivity : ComponentActivity() {
                         currentState.copy(cycleCompleted = cycleCompletedValue)
                     }
                     
-                    // 添加调试信息，显示周期完成状态变化
-                    if (cycleCompletedValue) {
-                        Log.d(TAG, "Cycle completed state changed to TRUE in MainActivity")
-                        Toast.makeText(
-                            this@MainActivity,
-                            "周期完成状态已更新！应该显示对话框",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
+                    // 周期完成状态变化时的处理现在由UI组件自动处理
+                    // 符合高内聚、低耦合的设计原则
                 }
             }
         }
@@ -382,11 +375,7 @@ class MainActivity : ComponentActivity() {
     
     // 通过TimerSettings和TimerState数据类提供状态流，不再需要单独的状态流变量
     
-    // Function to calculate break duration based on study duration
-    private fun calculateBreakDuration(studyDuration: Int): Int {
-        val calculated = (studyDuration * (20.0 / 90.0)).roundToInt()
-        return maxOf(5, calculated) // Ensure minimum 5 minutes break
-    }
+    // 休息时间计算现在已移到 TimerSettings 数据类中，遵循高内聚、低耦合的设计原则
     
     private fun startStudySession() {
         val currentSettings = _timerSettings.value
@@ -404,8 +393,9 @@ class MainActivity : ComponentActivity() {
                 currentSettings
             }
             
+            // 直接使用 TimerSettings 中的属性，避免重复计算
             val studyDuration = timerSettings.studyDurationMin
-            val breakDuration = if (testMode) 0 else calculateBreakDuration(studyDuration) // 测试模式下休息时间为0分钟
+            val breakDuration = timerSettings.breakDurationMin // 使用数据类中的属性，遵循高内聚原则
             val minAlarmInterval = timerSettings.minAlarmIntervalMin
             val maxAlarmInterval = timerSettings.maxAlarmIntervalMin
             
@@ -413,9 +403,9 @@ class MainActivity : ComponentActivity() {
             putExtra(StudyTimerService.EXTRA_BREAK_DURATION_MIN, breakDuration)
             putExtra(StudyTimerService.EXTRA_MIN_ALARM_INTERVAL_MIN, minAlarmInterval)
             putExtra(StudyTimerService.EXTRA_MAX_ALARM_INTERVAL_MIN, maxAlarmInterval)
-            putExtra(StudyTimerService.EXTRA_SHOW_NEXT_ALARM_TIME, currentSettings.showNextAlarmTime)
-            putExtra(StudyTimerService.EXTRA_ALARM_SOUND_TYPE, currentSettings.alarmSoundType)
-            putExtra(StudyTimerService.EXTRA_EYE_REST_SOUND_TYPE, currentSettings.eyeRestSoundType)
+            putExtra(StudyTimerService.EXTRA_SHOW_NEXT_ALARM_TIME, timerSettings.showNextAlarmTime) // 使用选定的设置
+            putExtra(StudyTimerService.EXTRA_ALARM_SOUND_TYPE, timerSettings.alarmSoundType) // 使用选定的设置
+            putExtra(StudyTimerService.EXTRA_EYE_REST_SOUND_TYPE, timerSettings.eyeRestSoundType) // 使用选定的设置
             putExtra(StudyTimerService.EXTRA_TEST_MODE, testMode) // 传递测试模式状态
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

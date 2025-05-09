@@ -16,6 +16,78 @@ data class TimerState(
     val elapsedTimeInFullCycle: Long = 0L,
     val cycleCompleted: Boolean = false
 ) {
+    
+    companion object {
+        /**
+         * 创建空闲状态的TimerState对象
+         * 
+         * @param timeLeftInSession 当前会话剩余时间（毫秒）
+         * @param elapsedTimeInFullCycle 完整周期中已经过去的时间（毫秒）
+         * @param cycleCompleted 周期是否完成
+         * @return 空闲状态的TimerState对象
+         */
+        fun idle(timeLeftInSession: Long = 0L, elapsedTimeInFullCycle: Long = 0L, cycleCompleted: Boolean = false): TimerState {
+            return TimerState(
+                timerState = TimerManager.TimerState.IDLE,
+                timeLeftInSession = timeLeftInSession,
+                timeUntilNextAlarm = 0L,
+                elapsedTimeInFullCycle = elapsedTimeInFullCycle,
+                cycleCompleted = cycleCompleted
+            )
+        }
+        
+        /**
+         * 创建学习状态的TimerState对象
+         * 
+         * @param timeLeftInSession 当前会话剩余时间（毫秒）
+         * @param timeUntilNextAlarm 到下一次闹钟的时间（毫秒）
+         * @param elapsedTimeInFullCycle 完整周期中已经过去的时间（毫秒）
+         * @return 学习状态的TimerState对象
+         */
+        fun studying(timeLeftInSession: Long, timeUntilNextAlarm: Long, elapsedTimeInFullCycle: Long): TimerState {
+            return TimerState(
+                timerState = TimerManager.TimerState.STUDYING,
+                timeLeftInSession = timeLeftInSession,
+                timeUntilNextAlarm = timeUntilNextAlarm,
+                elapsedTimeInFullCycle = elapsedTimeInFullCycle,
+                cycleCompleted = false
+            )
+        }
+        
+        /**
+         * 创建休息状态的TimerState对象
+         * 
+         * @param timeLeftInSession 当前会话剩余时间（毫秒）
+         * @param elapsedTimeInFullCycle 完整周期中已经过去的时间（毫秒）
+         * @return 休息状态的TimerState对象
+         */
+        fun breakState(timeLeftInSession: Long, elapsedTimeInFullCycle: Long): TimerState {
+            return TimerState(
+                timerState = TimerManager.TimerState.BREAK,
+                timeLeftInSession = timeLeftInSession,
+                timeUntilNextAlarm = 0L,
+                elapsedTimeInFullCycle = elapsedTimeInFullCycle,
+                cycleCompleted = false
+            )
+        }
+        
+        /**
+         * 创建眼部休息状态的TimerState对象
+         * 
+         * @param timeLeftInSession 当前会话剩余时间（毫秒）
+         * @param elapsedTimeInFullCycle 完整周期中已经过去的时间（毫秒）
+         * @return 眼部休息状态的TimerState对象
+         */
+        fun eyeRest(timeLeftInSession: Long, elapsedTimeInFullCycle: Long): TimerState {
+            return TimerState(
+                timerState = TimerManager.TimerState.EYE_REST,
+                timeLeftInSession = timeLeftInSession,
+                timeUntilNextAlarm = 0L,
+                elapsedTimeInFullCycle = elapsedTimeInFullCycle,
+                cycleCompleted = false
+            )
+        }
+    }
     /**
      * 判断计时器是否处于空闲状态
      */
