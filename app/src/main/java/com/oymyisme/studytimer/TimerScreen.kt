@@ -656,10 +656,10 @@ private fun StudyTimerAppImpl(
                         TimerManager.TimerState.IDLE -> if (isTestModeActive) {
                             stringResource(
                                 R.string.state_idle_test,
-                                TestMode.getStudyDurationSec(),
-                                TestMode.getBreakDurationSec(),
-                                TestMode.getMinAlarmIntervalSec(),
-                                TestMode.getMaxAlarmIntervalSec()
+                                TestMode.TEST_STUDY_TIME_MS / 1000, // 直接使用毫秒常量转换为秒
+                                TestMode.TEST_BREAK_TIME_MS / 1000,
+                                TestMode.TEST_ALARM_INTERVAL_MS / 1000,
+                                TestMode.TEST_ALARM_INTERVAL_MS / 1000 // 测试模式下最小和最大闹钟间隔相同
                             )
                         } else {
                             stringResource(

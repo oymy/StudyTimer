@@ -397,10 +397,17 @@ class MainActivity : ComponentActivity() {
             // 根据测试模式状态决定使用的参数
             val testMode = TestMode.isEnabled && currentSettings.testModeEnabled
             
-            val studyDuration = if (testMode) TestMode.getStudyDurationMin() else currentSettings.studyDurationMin
-            val breakDuration = if (testMode) TestMode.getBreakDurationMin() else calculateBreakDuration(studyDuration)
-            val minAlarmInterval = if (testMode) TestMode.getMinAlarmIntervalMin() else currentSettings.minAlarmIntervalMin
-            val maxAlarmInterval = if (testMode) TestMode.getMaxAlarmIntervalMin() else currentSettings.maxAlarmIntervalMin
+            // 根据测试模式状态选择合适的设置
+            val timerSettings = if (testMode) {
+                TestMode.createTestModeSettings()
+            } else {
+                currentSettings
+            }
+            
+            val studyDuration = timerSettings.studyDurationMin
+            val breakDuration = if (testMode) 0 else calculateBreakDuration(studyDuration) // 测试模式下休息时间为0分钟
+            val minAlarmInterval = timerSettings.minAlarmIntervalMin
+            val maxAlarmInterval = timerSettings.maxAlarmIntervalMin
             
             putExtra(StudyTimerService.EXTRA_STUDY_DURATION_MIN, studyDuration)
             putExtra(StudyTimerService.EXTRA_BREAK_DURATION_MIN, breakDuration)
