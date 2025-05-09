@@ -76,7 +76,7 @@ class NotificationHelper private constructor(private val context: Context) {
      * @return 通知对象
      */
     fun createNotification(
-        timerState: TimerManager.TimerState,
+        timerState: TimerManager.Companion.TimerState,
         timeLeftInSession: Long,
         showNextAlarmTime: Boolean,
         timeUntilNextAlarm: Long
@@ -122,7 +122,7 @@ class NotificationHelper private constructor(private val context: Context) {
      * 获取通知内容文本
      */
     private fun getNotificationContentText(
-        timerState: TimerManager.TimerState,
+        timerState: TimerManager.Companion.TimerState,
         timeLeftInSession: Long,
         showNextAlarmTime: Boolean,
         timeUntilNextAlarm: Long
@@ -130,8 +130,8 @@ class NotificationHelper private constructor(private val context: Context) {
         val timeLeftFormatted = formatTime(timeLeftInSession)
         
         return when (timerState) {
-            TimerManager.TimerState.IDLE -> context.getString(R.string.notification_idle)
-            TimerManager.TimerState.STUDYING -> {
+            TimerManager.Companion.TimerState.IDLE -> context.getString(R.string.notification_idle)
+            TimerManager.Companion.TimerState.STUDYING -> {
                 if (showNextAlarmTime) {
                     val nextAlarmFormatted = formatTime(timeUntilNextAlarm)
                     context.getString(R.string.notification_studying_with_alarm, timeLeftFormatted, nextAlarmFormatted)
@@ -139,8 +139,9 @@ class NotificationHelper private constructor(private val context: Context) {
                     context.getString(R.string.notification_studying, timeLeftFormatted)
                 }
             }
-            TimerManager.TimerState.BREAK -> context.getString(R.string.notification_break, timeLeftFormatted)
-            TimerManager.TimerState.EYE_REST -> context.getString(R.string.notification_eye_rest, timeLeftFormatted)
+            TimerManager.Companion.TimerState.BREAK -> context.getString(R.string.notification_break, timeLeftFormatted)
+            TimerManager.Companion.TimerState.EYE_REST -> context.getString(R.string.notification_eye_rest, timeLeftFormatted)
+            else -> context.getString(R.string.notification_idle) // 默认情况
         }
     }
     
@@ -148,7 +149,7 @@ class NotificationHelper private constructor(private val context: Context) {
      * 更新通知
      */
     fun updateNotification(
-        timerState: TimerManager.TimerState,
+        timerState: TimerManager.Companion.TimerState,
         timeLeftInSession: Long,
         showNextAlarmTime: Boolean,
         timeUntilNextAlarm: Long

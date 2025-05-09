@@ -271,7 +271,7 @@ class MainActivity : ComponentActivity() {
                                     service.updateTestMode(enabled, currentSettings.studyDurationMin)
                                     
                                     // 如果当前是IDLE状态，强制更新UI显示
-                                    if (currentTimerState.timerState == TimerManager.TimerState.IDLE) {
+                                    if (currentTimerState.timerState == TimerManager.Companion.TimerState.IDLE) {
                                         updateTimerState { it.copy(
                                             timeLeftInSession = service.timeLeftInSession.value ?: 0L
                                         )}
@@ -417,7 +417,7 @@ class MainActivity : ComponentActivity() {
         // 立即更新UI状态
         updateTimerState { currentState ->
             currentState.copy(
-                timerState = TimerManager.TimerState.STUDYING,
+                timerState = TimerManager.Companion.TimerState.STUDYING,
                 timeLeftInSession = currentSettings.studyDurationMin * 60 * 1000L, // 将分钟转换为毫秒
                 timeUntilNextAlarm = currentSettings.minAlarmIntervalMin * 60 * 1000L // 初始闹钟时间
             )
@@ -433,7 +433,7 @@ class MainActivity : ComponentActivity() {
         // 立即更新UI状态
         updateTimerState { currentState ->
             currentState.copy(
-                timerState = TimerManager.TimerState.IDLE,
+                timerState = TimerManager.Companion.TimerState.IDLE,
                 timeLeftInSession = 0L,
                 timeUntilNextAlarm = 0L
             )

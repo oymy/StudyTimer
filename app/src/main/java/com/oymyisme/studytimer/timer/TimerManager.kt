@@ -4,6 +4,8 @@ import android.os.CountDownTimer
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import com.oymyisme.model.TimerSettings
+import com.oymyisme.model.TimerState as ModelTimerState
 import com.oymyisme.studytimer.BuildConfig
 import com.oymyisme.studytimer.TestMode
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,15 +17,17 @@ import java.util.Random
  * 计时器管理器类
  * 
  * 负责管理学习、休息和眼睛休息计时器
+ * 使用 TimerSettings 数据类管理配置参数，提高代码内聚性
  */
 class TimerManager {
     companion object {
         private const val TAG = "TimerManager"
-    }
-
-    // 计时器状态
-    enum class TimerState {
-        IDLE, STUDYING, EYE_REST, BREAK
+        
+        // 计时器状态
+        // 保留枚举类型以保持兼容性，但内部使用 ModelTimerState 数据类
+        enum class TimerState {
+            IDLE, STUDYING, EYE_REST, BREAK
+        }
     }
 
     // 计时器
@@ -32,8 +36,8 @@ class TimerManager {
     private var eyeRestTimer: CountDownTimer? = null
 
     // 状态流
-    private val _timerState = MutableStateFlow(TimerState.IDLE)
-    val timerState: StateFlow<TimerState> = _timerState.asStateFlow()
+    private val _timerState = MutableStateFlow(Companion.TimerState.IDLE)
+    val timerState: StateFlow<Companion.TimerState> = _timerState.asStateFlow()
     
     private val _timeLeftInSession = MutableStateFlow(0L)
     val timeLeftInSession: StateFlow<Long> = _timeLeftInSession.asStateFlow()
@@ -50,53 +54,36 @@ class TimerManager {
     // 随机数生成器，用于闹钟间隔
     private val random = Random()
 
-    // 配置
-    private var testMode: Boolean = false
-    private var studyDurationMin: Int = 0
-    private var breakDurationMin: Int = 0
-    private var minAlarmIntervalMin: Int = 0
-    private var maxAlarmIntervalMin: Int = 0
+    // 计时器设置
+    private lateinit var timerSettings: TimerSettings
 
     // 眼睛休息前的状态保存
-    private var _previousTimerStateBeforeEyeRest: TimerState = TimerState.IDLE
+    private var _previousTimerStateBeforeEyeRest: Companion.TimerState = Companion.TimerState.IDLE
     private var _timeLeftBeforeEyeRest: Long = 0
     private var _timeUntilNextAlarmBeforeEyeRest: Long = 0
     private var _studyTimerBeforeEyeRest: CountDownTimer? = null
     private var _alarmTimerBeforeEyeRest: CountDownTimer? = null
 
-    // 计算的时间值（毫秒）
-    val studyTimeMs: Long
-        get() = if (testMode) {
-            TestMode.TEST_STUDY_TIME_MS
-        } else {
-            studyDurationMin * 60 * 1000L
-        }
-    
-    val breakTimeMs: Long
-        get() = if (testMode) {
-            TestMode.TEST_BREAK_TIME_MS
-        } else {
-            breakDurationMin * 60 * 1000L
-        }
-    
-    val minAlarmIntervalMs: Long
-        get() = if (testMode) {
-            TestMode.TEST_ALARM_INTERVAL_MS
-        } else {
-            minAlarmIntervalMin * 60 * 1000L
-        }
-    
-    val maxAlarmIntervalMs: Long
-        get() = if (testMode) {
-            TestMode.TEST_ALARM_INTERVAL_MS
-        } else {
-            maxAlarmIntervalMin * 60 * 1000L
-        }
-
     // 内部计算用的时间值
     private var mStudyDurationMillis: Long = 0
     private var mBreakDurationMillis: Long = 0
     private var mTotalCycleDurationMillis: Long = 0
+    
+    // 使用 TimerSettings 数据类中的方法获取时间值
+    val studyTimeMs: Long
+        get() = if (::timerSettings.isInitialized) timerSettings.studyTimeMs else 0L
+    
+    val breakTimeMs: Long
+        get() = if (::timerSettings.isInitialized) timerSettings.breakTimeMs else 0L
+    
+    private val minAlarmIntervalMs: Long
+        get() = if (::timerSettings.isInitialized) timerSettings.minAlarmIntervalMs else 0L
+    
+    private val maxAlarmIntervalMs: Long
+        get() = if (::timerSettings.isInitialized) timerSettings.maxAlarmIntervalMs else 0L
+        
+    val testModeEnabled: Boolean
+        get() = if (::timerSettings.isInitialized) timerSettings.testModeEnabled else false
 
     // 回调接口
     interface TimerCallback {
@@ -122,6 +109,19 @@ class TimerManager {
 
     /**
      * 配置计时器
+     * 使用 TimerSettings 数据类管理配置参数，提高代码内聚性
+     * 
+     * @param settings 计时器设置数据类实例
+     */
+    fun configure(settings: TimerSettings) {
+        this.timerSettings = settings
+
+        // 更新内部计算用的时间值
+        updateInternalDurations()
+    }
+    
+    /**
+     * 向后兼容的配置方法
      */
     fun configure(
         studyDurationMin: Int,
@@ -130,14 +130,18 @@ class TimerManager {
         maxAlarmIntervalMin: Int,
         testMode: Boolean
     ) {
-        this.studyDurationMin = studyDurationMin
-        this.breakDurationMin = breakDurationMin
-        this.minAlarmIntervalMin = minAlarmIntervalMin
-        this.maxAlarmIntervalMin = maxAlarmIntervalMin
-        this.testMode = testMode
-
-        // 更新内部计算用的时间值
-        updateInternalDurations()
+        // 创建 TimerSettings 对象
+        val timeUnit = if (testMode) com.oymyisme.model.TimeUnit.SECONDS else com.oymyisme.model.TimeUnit.MINUTES
+        val settings = TimerSettings(
+            studyDurationMin = studyDurationMin,
+            minAlarmIntervalMin = minAlarmIntervalMin,
+            maxAlarmIntervalMin = maxAlarmIntervalMin,
+            testModeEnabled = testMode,
+            timeUnit = timeUnit
+        )
+        
+        // 调用新的 configure 方法
+        configure(settings)
     }
 
     /**
@@ -154,7 +158,7 @@ class TimerManager {
      */
     fun startStudySession() {
         stopAllTimers()
-        _timerState.value = TimerState.STUDYING
+        _timerState.value = Companion.TimerState.STUDYING
         _timeLeftInSession.value = studyTimeMs
         _elapsedTimeInFullCycleMillis.value = 0L // 重置周期进度
         _cycleCompleted.value = false
@@ -188,7 +192,7 @@ class TimerManager {
      * 开始休息会话
      */
     private fun startBreakSession() {
-        _timerState.value = TimerState.BREAK
+        _timerState.value = Companion.TimerState.BREAK
         _timeLeftInSession.value = breakTimeMs
 
         if (BuildConfig.DEBUG) {
@@ -215,7 +219,7 @@ class TimerManager {
                 callback?.onCycleCompleted()
                 
                 // 重置为IDLE状态
-                _timerState.value = TimerState.IDLE
+                _timerState.value = Companion.TimerState.IDLE
             }
         }.start()
     }
@@ -264,7 +268,7 @@ class TimerManager {
                 if (BuildConfig.DEBUG) {
                     Log.d(TAG, "Alarm timer finished")
                 }
-                if (_timerState.value == TimerState.STUDYING) {
+                if (_timerState.value == Companion.TimerState.STUDYING) {
                     if (BuildConfig.DEBUG) {
                         Log.d(TAG, "Triggering eye rest alarm")
                     }
@@ -291,7 +295,7 @@ class TimerManager {
         
         // 在触发闹钟后立即计划下一次闹钟，确保循环继续
         Handler(Looper.getMainLooper()).postDelayed({
-            if (_timerState.value == TimerState.STUDYING) {
+            if (_timerState.value == Companion.TimerState.STUDYING) {
                 if (BuildConfig.DEBUG) {
                     Log.d(TAG, "Scheduling next alarm after eye rest")
                 }
@@ -312,7 +316,7 @@ class TimerManager {
         _alarmTimerBeforeEyeRest = alarmTimer
         
         // 切换到眼部休息状态
-        _timerState.value = TimerState.EYE_REST
+        _timerState.value = Companion.TimerState.EYE_REST
         _timeLeftInSession.value = TestMode.TEST_EYE_REST_TIME_MS
         
         if (BuildConfig.DEBUG) {
@@ -343,7 +347,7 @@ class TimerManager {
                 // 恢复到之前的状态（应该是 STUDYING）
                 _timerState.value = _previousTimerStateBeforeEyeRest
                 
-                if (_previousTimerStateBeforeEyeRest == TimerState.STUDYING) {
+                if (_previousTimerStateBeforeEyeRest == Companion.TimerState.STUDYING) {
                     // 恢复显示的剩余学习时间
                     _timeLeftInSession.value = _timeLeftBeforeEyeRest
                     _timeUntilNextAlarm.value = _timeUntilNextAlarmBeforeEyeRest
@@ -375,7 +379,8 @@ class TimerManager {
         eyeRestTimer?.cancel()
         eyeRestTimer = null
         
-        _timerState.value = TimerState.IDLE
+        // 重置状态
+        _timerState.value = Companion.TimerState.IDLE
         _timeLeftInSession.value = 0L
         _timeUntilNextAlarm.value = 0L
         _elapsedTimeInFullCycleMillis.value = 0L
@@ -391,7 +396,7 @@ class TimerManager {
     /**
      * 获取当前的计时器状态
      */
-    fun getCurrentState(): TimerState {
+    fun getCurrentState(): Companion.TimerState {
         return _timerState.value
     }
 }
