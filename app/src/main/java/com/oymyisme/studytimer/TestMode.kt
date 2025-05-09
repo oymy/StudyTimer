@@ -50,13 +50,14 @@ object TestMode {
      */
     fun createTestModeSettings(): TimerSettings {
         return TimerSettings(
-            studyDurationMin = 0, // 测试模式下使用秒为单位，分钟值为0
-            minAlarmIntervalMin = 0, // 测试模式下使用秒为单位，分钟值为0
-            maxAlarmIntervalMin = 0, // 测试模式下使用秒为单位，分钟值为0
+            studyDurationMin = (TEST_STUDY_TIME_MS / 1000).toInt(), // 测试模式下使用秒为单位
+            minAlarmIntervalMin = (TEST_ALARM_INTERVAL_MS / 1000).toInt(), // 测试模式下使用秒为单位
+            maxAlarmIntervalMin = (TEST_ALARM_INTERVAL_MS / 1000).toInt(), // 测试模式下使用秒为单位
             showNextAlarmTime = false, // 测试模式下默认不显示下一次闹钟时间
             alarmSoundType = SoundOptions.DEFAULT_ALARM_SOUND_TYPE,
             eyeRestSoundType = SoundOptions.DEFAULT_EYE_REST_SOUND_TYPE,
-            testModeEnabled = true
+            testModeEnabled = true,
+            timeUnit = com.oymyisme.model.TimeUnit.SECONDS // 指定使用秒作为时间单位
         )
     }
 }
