@@ -1,5 +1,7 @@
 package com.oymyisme.studytimer
 
+import com.oymyisme.model.TimerSettings
+
 /**
  * 测试模式工具类
  * 
@@ -105,5 +107,23 @@ object TestMode {
      */
     fun getBreakDurationSec(): Int {
         return (TEST_BREAK_TIME_MS / 1000).toInt() // 10秒
+    }
+    
+    /**
+     * 创建测试模式的 TimerSettings 实例
+     * 封装所有测试模式相关的设置
+     * 
+     * @return 配置好的 TimerSettings 实例，启用测试模式
+     */
+    fun createTestModeSettings(): TimerSettings {
+        return TimerSettings(
+            studyDurationMin = getStudyDurationMin(),
+            minAlarmIntervalMin = getMinAlarmIntervalMin(),
+            maxAlarmIntervalMin = getMaxAlarmIntervalMin(),
+            showNextAlarmTime = false, // 测试模式下默认不显示下一次闹钟时间
+            alarmSoundType = SoundOptions.DEFAULT_ALARM_SOUND_TYPE,
+            eyeRestSoundType = SoundOptions.DEFAULT_EYE_REST_SOUND_TYPE,
+            testModeEnabled = true
+        )
     }
 }

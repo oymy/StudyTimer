@@ -468,8 +468,54 @@ private fun TimerTestModeSwitch(
 
 /**
  * The main UI composable for the Timer screen.
- * 使用新的数据结构来简化参数传递
+ * 使用数据类来简化参数传递，提高代码的可维护性
+ * 
+ * @param timerState 计时器状态数据类，包含所有状态信息
+ * @param settings 计时器设置数据类，包含所有配置信息
+ * @param testModeChangeTrigger 测试模式变化触发器，用于强制UI重组
+ * @param onStartClick 开始按钮点击回调
+ * @param onStopClick 停止按钮点击回调
+ * @param onSettingsClick 设置按钮点击回调
+ * @param onTestModeToggle 测试模式切换回调
+ * @param onContinueNextCycle 继续下一个周期回调
+ * @param onReturnToMain 返回主界面回调
  */
+@Composable
+fun StudyTimerApp(
+    timerState: com.oymyisme.model.TimerState,
+    settings: com.oymyisme.model.TimerSettings,
+    testModeChangeTrigger: String = "", // 测试模式变化触发器，用于强制UI重组
+    onStartClick: () -> Unit,
+    onStopClick: () -> Unit,
+    onSettingsClick: () -> Unit,
+    onTestModeToggle: (Boolean) -> Unit = {},
+    onContinueNextCycle: () -> Unit = {},
+    onReturnToMain: () -> Unit = {}
+) {
+    // 直接使用数据类调用内部实现
+    StudyTimerAppImpl(
+        timerState = timerState,
+        settings = settings,
+        testModeChangeTrigger = testModeChangeTrigger,
+        onStartClick = onStartClick,
+        onStopClick = onStopClick,
+        onSettingsClick = onSettingsClick,
+        onTestModeToggle = onTestModeToggle,
+        onContinueNextCycle = onContinueNextCycle,
+        onReturnToMain = onReturnToMain
+    )
+}
+
+/**
+ * 兼容旧版本的StudyTimerApp，将多个独立参数转换为数据类
+ * 注意：这个函数将在后续版本中移除，请使用新的数据类版本
+ * 
+ * @deprecated 使用新的数据类版本替代，将在未来版本中移除
+ */
+@Deprecated(
+    message = "请使用新的数据类版本替代",
+    replaceWith = ReplaceWith("StudyTimerApp(timerState, settings, testModeChangeTrigger, onStartClick, onStopClick, onSettingsClick, onTestModeToggle, onContinueNextCycle, onReturnToMain)")
+)
 @Composable
 fun StudyTimerApp(
     timerState: TimerManager.TimerState,
@@ -490,11 +536,7 @@ fun StudyTimerApp(
     onTestModeToggle: (Boolean) -> Unit = {},
     onContinueNextCycle: () -> Unit = {},
     onReturnToMain: () -> Unit = {}
-)
-{
-    // 定义一个变量来存储是否在测试模式下，避免重复检查
-    val isTestModeActive = testModeEnabled && TestMode.isEnabled
-    
+) {
     // 将原始参数映射到新的数据结构
     val currentTimerState = com.oymyisme.model.TimerState(
         timerState = timerState,
@@ -515,8 +557,8 @@ fun StudyTimerApp(
         eyeRestSoundType = SoundOptions.DEFAULT_EYE_REST_SOUND_TYPE
     )
     
-    // 使用新的数据结构调用内部实现
-    StudyTimerAppImpl(
+    // 使用新的数据类版本
+    StudyTimerApp(
         timerState = currentTimerState,
         settings = currentSettings,
         testModeChangeTrigger = testModeChangeTrigger,

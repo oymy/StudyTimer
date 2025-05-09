@@ -246,20 +246,11 @@ class MainActivity : ComponentActivity() {
                         // 计算休息时间
                         val breakDurationMin = calculateBreakDuration(currentSettings.studyDurationMin)
                         
-                        // 使用新的数据结构传递给UI组件
+                        // 直接使用数据类传递给UI组件，提高代码可维护性
                         StudyTimerApp(
-                            timerState = currentTimerState.timerState,
-                            timeLeftInSession = currentTimerState.timeLeftInSession,
-                            timeUntilNextAlarm = currentTimerState.timeUntilNextAlarm,
-                            elapsedTimeInFullCycle = currentTimerState.elapsedTimeInFullCycle,
-                            showNextAlarmTime = currentSettings.showNextAlarmTime,
-                            studyDurationMin = currentSettings.studyDurationMin,
-                            minAlarmIntervalMin = currentSettings.minAlarmIntervalMin,
-                            maxAlarmIntervalMin = currentSettings.maxAlarmIntervalMin,
-                            breakDurationMin = breakDurationMin,
-                            testModeEnabled = currentSettings.testModeEnabled,
+                            timerState = currentTimerState,
+                            settings = currentSettings,
                             testModeChangeTrigger = _testModeChangeTrigger.collectAsState().value,
-                            cycleCompleted = currentTimerState.cycleCompleted,
                             onStartClick = { startStudySession() },
                             onStopClick = { stopStudySession() },
                             onSettingsClick = {
