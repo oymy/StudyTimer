@@ -1,4 +1,4 @@
-package com.oymyisme.studytimer.vibration
+package com.oymyisme.studytimer.media
 
 import android.content.Context
 import android.os.Build
@@ -7,7 +7,6 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import android.util.Log
 import com.oymyisme.studytimer.BuildConfig
-import com.oymyisme.studytimer.StudyTimerService
 
 /**
  * 振动管理器类

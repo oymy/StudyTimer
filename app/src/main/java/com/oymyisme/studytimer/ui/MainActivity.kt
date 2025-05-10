@@ -1,8 +1,7 @@
-package com.oymyisme.studytimer
+package com.oymyisme.studytimer.ui
 
 import android.Manifest
 import android.content.ComponentName
-import android.content.ContentValues.TAG
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
@@ -19,27 +18,22 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.oymyisme.model.TimerSettings
 import com.oymyisme.model.TimerState
-import com.oymyisme.studytimer.settings.ThemeMode
-import com.oymyisme.studytimer.settings.ThemeSettings
-import com.oymyisme.studytimer.settings.ThemeSettingsScreen
+import com.oymyisme.studytimer.model.ThemeMode
+import com.oymyisme.studytimer.model.ThemeSettings
 import com.oymyisme.studytimer.timer.TimerManager
 import com.oymyisme.studytimer.ui.theme.StudyTimerTheme
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
-import kotlin.math.roundToInt
 import androidx.core.content.edit
-import androidx.compose.runtime.State
+import com.oymyisme.studytimer.model.SoundOptions
+import com.oymyisme.studytimer.service.StudyTimerService
+import com.oymyisme.studytimer.model.TestMode
 
 class MainActivity : ComponentActivity() {
     private var studyTimerService: StudyTimerService? = null
@@ -109,7 +103,10 @@ class MainActivity : ComponentActivity() {
             showNextAlarmTime = prefs.getBoolean(KEY_SHOW_NEXT_ALARM, false),
             alarmSoundType = prefs.getString(KEY_ALARM_SOUND, SoundOptions.DEFAULT_ALARM_SOUND_TYPE)
                 ?: SoundOptions.DEFAULT_ALARM_SOUND_TYPE,
-            eyeRestSoundType = prefs.getString(KEY_EYE_REST_SOUND, SoundOptions.DEFAULT_EYE_REST_SOUND_TYPE)
+            eyeRestSoundType = prefs.getString(
+                KEY_EYE_REST_SOUND,
+                SoundOptions.DEFAULT_EYE_REST_SOUND_TYPE
+            )
                 ?: SoundOptions.DEFAULT_EYE_REST_SOUND_TYPE,
             testModeEnabled = prefs.getBoolean(KEY_TEST_MODE, false)
         )

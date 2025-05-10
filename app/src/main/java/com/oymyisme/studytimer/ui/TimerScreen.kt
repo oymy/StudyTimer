@@ -1,8 +1,7 @@
-package com.oymyisme.studytimer
+package com.oymyisme.studytimer.ui
 
 import android.util.Log
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -14,11 +13,6 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.Alignment
@@ -31,11 +25,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.res.stringResource
+import com.oymyisme.studytimer.R
+import com.oymyisme.studytimer.model.SoundOptions
 import java.util.concurrent.TimeUnit
-import com.oymyisme.studytimer.timer.TimerManager
 import com.oymyisme.studytimer.ui.theme.StudyTimerTheme
 import java.util.Locale
-import com.oymyisme.studytimer.BuildConfig
+import com.oymyisme.studytimer.model.TestMode
 
 /**
  * 时间格式化工具函数

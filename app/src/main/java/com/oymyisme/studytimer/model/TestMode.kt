@@ -1,6 +1,7 @@
-package com.oymyisme.studytimer
+package com.oymyisme.studytimer.model
 
 import com.oymyisme.model.TimerSettings
+import com.oymyisme.studytimer.BuildConfig
 
 /**
  * 测试模式工具类

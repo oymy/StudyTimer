@@ -1,4 +1,4 @@
-package com.oymyisme.studytimer.settings
+package com.oymyisme.studytimer.model
 
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey

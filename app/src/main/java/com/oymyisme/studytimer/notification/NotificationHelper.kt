@@ -10,7 +10,7 @@ import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.oymyisme.studytimer.BuildConfig
-import com.oymyisme.studytimer.MainActivity
+import com.oymyisme.studytimer.ui.MainActivity
 import com.oymyisme.studytimer.R
 import com.oymyisme.studytimer.timer.TimerManager
 

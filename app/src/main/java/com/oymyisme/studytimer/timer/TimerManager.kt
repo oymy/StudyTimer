@@ -5,9 +5,8 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import com.oymyisme.model.TimerSettings
-import com.oymyisme.model.TimerState as ModelTimerState
 import com.oymyisme.studytimer.BuildConfig
-import com.oymyisme.studytimer.TestMode
+import com.oymyisme.studytimer.model.TestMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

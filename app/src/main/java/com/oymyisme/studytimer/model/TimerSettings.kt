@@ -1,7 +1,7 @@
 package com.oymyisme.model
 
-import com.oymyisme.studytimer.SoundOptions
-import com.oymyisme.studytimer.TestMode
+import com.oymyisme.studytimer.model.SoundOptions
+import com.oymyisme.studytimer.model.TestMode
 import kotlin.math.roundToInt
 
 /**

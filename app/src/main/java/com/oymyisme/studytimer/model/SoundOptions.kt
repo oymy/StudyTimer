@@ -1,4 +1,4 @@
-package com.oymyisme.studytimer
+package com.oymyisme.studytimer.model
 
 import android.content.Context
 import android.media.RingtoneManager
@@ -33,23 +33,29 @@ object SoundOptions {
         val options = mutableListOf<SoundOption>()
         
         // 添加默认提示音选项
-        options.add(SoundOption(
+        options.add(
+            SoundOption(
             "DEFAULT_NOTIFICATION",
             "默认通知音",
             RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-        ))
+        )
+        )
         
-        options.add(SoundOption(
+        options.add(
+            SoundOption(
             "DEFAULT_ALARM",
             "默认闹钟音",
             RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-        ))
+        )
+        )
         
-        options.add(SoundOption(
+        options.add(
+            SoundOption(
             "DEFAULT_RINGTONE",
             "默认铃声",
             RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
-        ))
+        )
+        )
         
         // 获取系统所有提示音
         val notificationManager = RingtoneManager(context)

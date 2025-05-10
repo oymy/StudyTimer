@@ -1,4 +1,4 @@
-package com.oymyisme.studytimer.settings
+package com.oymyisme.studytimer.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -14,6 +14,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.oymyisme.studytimer.R
+import com.oymyisme.studytimer.model.ThemeMode
+import com.oymyisme.studytimer.model.ThemeSettings
 import kotlinx.coroutines.launch
 
 /**
@@ -164,7 +166,7 @@ fun ThemeSettingsScreen(
                             themeSettings.setAmoledBlack(it)
                         }
                     },
-                    enabled = currentThemeMode == ThemeMode.DARK || 
+                    enabled = currentThemeMode == ThemeMode.DARK ||
                              (currentThemeMode == ThemeMode.SYSTEM && isSystemInDarkTheme())
                 )
             }
