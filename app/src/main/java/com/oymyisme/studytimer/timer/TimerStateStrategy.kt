@@ -3,6 +3,7 @@ package com.oymyisme.studytimer.timer
 import android.os.CountDownTimer
 import android.util.Log
 import com.oymyisme.studytimer.BuildConfig
+import com.oymyisme.studytimer.model.TimerPhase
 
 /**
  * 计时器状态策略接口
@@ -116,7 +117,7 @@ class BreakStateStrategy : TimerStateStrategy {
             state.copy(
                 timeLeftInSession = 0L,
                 elapsedTimeInFullCycle = manager.timerDurations.totalCycleDurationMillis,
-                timerPhase = TimerManager.Companion.TimerPhase.IDLE,
+                timerPhase = TimerPhase.IDLE,
                 cycleCompleted = true
             )
         }
@@ -174,7 +175,7 @@ class EyeRestStateStrategy : TimerStateStrategy {
         
         manager.callback?.onEyeRestFinished()
         
-        if (manager.eyeRestState.previousTimerPhase == TimerManager.Companion.TimerPhase.STUDYING) {
+        if (manager.eyeRestState.previousTimerPhase == TimerPhase.STUDYING) {
             // 恢复显示的剩余学习时间
             manager.updateState { state ->
                 state.copy(

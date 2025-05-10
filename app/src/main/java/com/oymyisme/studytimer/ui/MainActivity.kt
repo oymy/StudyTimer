@@ -19,20 +19,20 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import androidx.lifecycle.lifecycleScope
-import com.oymyisme.studytimer.model.TimerSettings
 import com.oymyisme.model.TimerState
+import com.oymyisme.studytimer.model.SoundOptions
+import com.oymyisme.studytimer.model.TestMode
 import com.oymyisme.studytimer.model.ThemeMode
 import com.oymyisme.studytimer.model.ThemeSettings
-import com.oymyisme.studytimer.timer.TimerManager
+import com.oymyisme.studytimer.model.TimerPhase
+import com.oymyisme.studytimer.model.TimerSettings
+import com.oymyisme.studytimer.service.StudyTimerService
 import com.oymyisme.studytimer.ui.theme.StudyTimerTheme
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
-import androidx.core.content.edit
-import com.oymyisme.studytimer.model.SoundOptions
-import com.oymyisme.studytimer.service.StudyTimerService
-import com.oymyisme.studytimer.model.TestMode
 
 class MainActivity : ComponentActivity() {
     private var studyTimerService: StudyTimerService? = null
@@ -264,7 +264,7 @@ class MainActivity : ComponentActivity() {
                                     service.updateTestMode(enabled, currentSettings.studyDurationMin)
 
                                     // 如果当前是IDLE状态，强制更新UI显示
-                                    if (currentTimerState.timerPhase == TimerManager.Companion.TimerPhase.IDLE) {
+                                    if (currentTimerState.timerPhase == TimerPhase.IDLE) {
                                         updateTimerState { it.copy(
                                             timeLeftInSession = service.timeLeftInSession
                                         )}
@@ -378,7 +378,7 @@ class MainActivity : ComponentActivity() {
         // 立即更新UI状态
         updateTimerState { currentState ->
             currentState.copy(
-                timerPhase = TimerManager.Companion.TimerPhase.STUDYING,
+                timerPhase = TimerPhase.STUDYING,
                 timeLeftInSession = currentSettings.studyDurationMin * 60 * 1000L, // 将分钟转换为毫秒
                 timeUntilNextAlarm = currentSettings.minAlarmIntervalMin * 60 * 1000L // 初始闹钟时间
             )
@@ -394,7 +394,7 @@ class MainActivity : ComponentActivity() {
         // 立即更新UI状态
         updateTimerState { currentState ->
             currentState.copy(
-                timerPhase = TimerManager.Companion.TimerPhase.IDLE,
+                timerPhase = TimerPhase.IDLE,
                 timeLeftInSession = 0L,
                 timeUntilNextAlarm = 0L
             )

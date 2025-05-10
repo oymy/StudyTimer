@@ -1,5 +1,6 @@
 package com.oymyisme.model
 
+import com.oymyisme.studytimer.model.TimerPhase
 import com.oymyisme.studytimer.timer.TimerManager
 
 /**
@@ -9,7 +10,7 @@ import com.oymyisme.studytimer.timer.TimerManager
  * 遵循高内聚、低耦合的设计原则，将相关的状态和计算逻辑集中在一个类中
  */
 data class TimerState(
-    val timerPhase: TimerManager.Companion.TimerPhase = TimerManager.Companion.TimerPhase.IDLE,
+    val timerPhase: TimerPhase = TimerPhase.IDLE,
     val timeLeftInSession: Long = 0L,
     val timeUntilNextAlarm: Long = 0L,
     val elapsedTimeInFullCycle: Long = 0L,
@@ -27,7 +28,7 @@ data class TimerState(
          */
         fun idle(timeLeftInSession: Long = 0L, elapsedTimeInFullCycle: Long = 0L, cycleCompleted: Boolean = false): TimerState {
             return TimerState(
-                timerPhase = TimerManager.Companion.TimerPhase.IDLE,
+                timerPhase = TimerPhase.IDLE,
                 timeLeftInSession = timeLeftInSession,
                 timeUntilNextAlarm = 0L,
                 elapsedTimeInFullCycle = elapsedTimeInFullCycle,
@@ -45,7 +46,7 @@ data class TimerState(
          */
         fun studying(timeLeftInSession: Long, timeUntilNextAlarm: Long, elapsedTimeInFullCycle: Long): TimerState {
             return TimerState(
-                timerPhase = TimerManager.Companion.TimerPhase.STUDYING,
+                timerPhase = TimerPhase.STUDYING,
                 timeLeftInSession = timeLeftInSession,
                 timeUntilNextAlarm = timeUntilNextAlarm,
                 elapsedTimeInFullCycle = elapsedTimeInFullCycle,
@@ -62,7 +63,7 @@ data class TimerState(
          */
         fun breakState(timeLeftInSession: Long, elapsedTimeInFullCycle: Long): TimerState {
             return TimerState(
-                timerPhase = TimerManager.Companion.TimerPhase.BREAK,
+                timerPhase = TimerPhase.BREAK,
                 timeLeftInSession = timeLeftInSession,
                 timeUntilNextAlarm = 0L,
                 elapsedTimeInFullCycle = elapsedTimeInFullCycle,
@@ -79,7 +80,7 @@ data class TimerState(
          */
         fun eyeRest(timeLeftInSession: Long, elapsedTimeInFullCycle: Long): TimerState {
             return TimerState(
-                timerPhase = TimerManager.Companion.TimerPhase.EYE_REST,
+                timerPhase = TimerPhase.EYE_REST,
                 timeLeftInSession = timeLeftInSession,
                 timeUntilNextAlarm = 0L,
                 elapsedTimeInFullCycle = elapsedTimeInFullCycle,
@@ -91,24 +92,24 @@ data class TimerState(
      * 判断计时器是否处于空闲状态
      */
     val isIdle: Boolean
-        get() = timerPhase == TimerManager.Companion.TimerPhase.IDLE
+        get() = timerPhase == TimerPhase.IDLE
     
     /**
      * 判断计时器是否处于学习状态
      */
     val isStudying: Boolean
-        get() = timerPhase == TimerManager.Companion.TimerPhase.STUDYING
+        get() = timerPhase == TimerPhase.STUDYING
     
     /**
      * 判断计时器是否处于休息状态
      */
     val isBreak: Boolean
-        get() = timerPhase == TimerManager.Companion.TimerPhase.BREAK
+        get() = timerPhase == TimerPhase.BREAK
     
     /**
      * 判断计时器是否处于眼睛休息状态
      */
     val isEyeRest: Boolean
-        get() = timerPhase == TimerManager.Companion.TimerPhase.EYE_REST
+        get() = timerPhase == TimerPhase.EYE_REST
 
 }

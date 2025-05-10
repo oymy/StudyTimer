@@ -15,6 +15,7 @@ import com.oymyisme.studytimer.media.AudioPlayerManager
 import com.oymyisme.studytimer.notification.NotificationHelper
 import com.oymyisme.studytimer.timer.TimerManager
 import com.oymyisme.studytimer.media.VibrationManager
+import com.oymyisme.studytimer.model.TimerPhase
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -207,7 +208,7 @@ class StudyTimerService : Service() {
 
                     // 创建初始通知，使用 TimerSettings 对象的属性
                     val initialNotification = notificationManager.createNotification(
-                        TimerManager.Companion.TimerPhase.IDLE,
+                        TimerPhase.IDLE,
                         0L,
                         timerSettings.showNextAlarmTime,
                         0L

@@ -10,6 +10,7 @@ import com.oymyisme.studytimer.BuildConfig
 import com.oymyisme.studytimer.model.EyeRestState
 import com.oymyisme.studytimer.model.TestMode
 import com.oymyisme.studytimer.model.TimerDurations
+import com.oymyisme.studytimer.model.TimerPhase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,10 +26,7 @@ class TimerManager : ViewModel() {
     companion object {
         const val TAG = "TimerManager"
         
-        // 计时器状态
-        enum class TimerPhase {
-            IDLE, STUDYING, EYE_REST, BREAK
-        }
+
     }
 
     // 使用单一状态流管理所有状态
@@ -138,7 +136,7 @@ class TimerManager : ViewModel() {
         // 使用单一方法更新状态
         updateState { state ->
             state.copy(
-                timerPhase = Companion.TimerPhase.STUDYING,
+                timerPhase = TimerPhase.STUDYING,
                 timeLeftInSession = timerDurations.studyDurationMillis,
                 elapsedTimeInFullCycle = 0L,
                 cycleCompleted = false
@@ -161,7 +159,7 @@ class TimerManager : ViewModel() {
         
         updateState { state ->
             state.copy(
-                timerPhase = Companion.TimerPhase.BREAK,
+                timerPhase = TimerPhase.BREAK,
                 timeLeftInSession = timerDurations.breakDurationMillis
             )
         }
@@ -222,7 +220,7 @@ class TimerManager : ViewModel() {
         // 更新状态为眼睛休息
         updateState { state ->
             state.copy(
-                timerPhase = Companion.TimerPhase.EYE_REST,
+                timerPhase = TimerPhase.EYE_REST,
                 timeLeftInSession = eyeRestDurationMs
             )
         }

@@ -9,7 +9,7 @@ import com.oymyisme.studytimer.timer.TimerManager
  * 遵循高内聚、低耦合的设计原则，将相关的状态集中在一个类中
  */
 data class EyeRestState(
-    val previousTimerPhase: TimerManager.Companion.TimerPhase = TimerManager.Companion.TimerPhase.IDLE,
+    val previousTimerPhase: TimerPhase = TimerPhase.IDLE,
     val timeLeftBeforeEyeRest: Long = 0,
     val timeUntilNextAlarmBeforeEyeRest: Long = 0
 ) {
