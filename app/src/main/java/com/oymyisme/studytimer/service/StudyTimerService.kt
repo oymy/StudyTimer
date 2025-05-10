@@ -14,6 +14,7 @@ import com.oymyisme.studytimer.media.AudioPlayerManager
 import com.oymyisme.studytimer.notification.NotificationHelper
 import com.oymyisme.studytimer.timer.TimerManager
 import com.oymyisme.studytimer.media.VibrationManager
+import com.oymyisme.studytimer.model.TimerRuntimeState
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -57,20 +58,24 @@ class StudyTimerService : Service() {
     private lateinit var vibrationManager: VibrationManager
 
     // 暴露状态流给 UI
-    val timerPhase: StateFlow<TimerManager.Companion.TimerPhase>
-        get() = timerManager.timerPhase
-
-    val timeLeftInSession: StateFlow<Long>
-        get() = timerManager.timeLeftInSession
-
-    val timeUntilNextAlarm: StateFlow<Long>
-        get() = timerManager.timeUntilNextAlarm
-
-    val elapsedTimeInFullCycleMillis: StateFlow<Long>
-        get() = timerManager.elapsedTimeInFullCycleMillis
-
-    val cycleCompleted: StateFlow<Boolean>
-        get() = timerManager.cycleCompleted
+    val runtimeState: StateFlow<TimerRuntimeState>
+        get() = timerManager.runtimeState
+        
+    // 便捷方法，方便其他组件使用
+    val timerPhase: TimerManager.Companion.TimerPhase
+        get() = runtimeState.value.phase
+        
+    val timeLeftInSession: Long
+        get() = runtimeState.value.timeLeftInSession
+        
+    val timeUntilNextAlarm: Long
+        get() = runtimeState.value.timeUntilNextAlarm
+        
+    val elapsedTimeInFullCycleMillis: Long
+        get() = runtimeState.value.elapsedTimeInFullCycle
+        
+    val cycleCompleted: Boolean
+        get() = runtimeState.value.cycleCompleted
 
     // Wake lock to keep CPU running
     private var wakeLock: PowerManager.WakeLock? = null
@@ -265,15 +270,16 @@ class StudyTimerService : Service() {
 
     /**
      * 更新通知
-     * 使用 TimerSettings 和 TimerState 数据类，提高代码的内聚性和可维护性
+     * 使用单一数据源原则，提高代码的内聚性和可维护性
      */
     private fun updateNotification() {
-        // 创建 TimerState 对象，封装当前状态
-        val currentState = timerManager.timerPhase.value
-        val timeLeftInSession = timerManager.timeLeftInSession.value ?: 0L
-        val timeUntilNextAlarm = timerManager.timeUntilNextAlarm.value ?: 0L
-        val elapsedTimeInFullCycle = timerManager.elapsedTimeInFullCycleMillis.value ?: 0L
-        val cycleCompleted = timerManager.cycleCompleted.value
+        // 直接使用单一状态流
+        val state = timerManager.runtimeState.value
+        val currentState = state.phase
+        val timeLeftInSession = state.timeLeftInSession
+        val timeUntilNextAlarm = state.timeUntilNextAlarm
+        val elapsedTimeInFullCycle = state.elapsedTimeInFullCycle
+        val cycleCompleted = state.cycleCompleted
 
         val timerPhase = when (currentState) {
             TimerManager.Companion.TimerPhase.IDLE -> com.oymyisme.model.TimerState.idle(
@@ -347,7 +353,7 @@ class StudyTimerService : Service() {
         timerManager.configure(timerSettings)
 
         // 如果当前是空闲状态，更新显示的时间
-        if (timerManager.timerPhase.value == TimerManager.Companion.TimerPhase.IDLE) {
+        if (timerManager.runtimeState.value.isIdle()) {
             // 直接重新启动计时器，这将更新剩余时间
             timerManager.configure(timerSettings)
         }

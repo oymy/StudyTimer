@@ -270,7 +270,7 @@ class MainActivity : ComponentActivity() {
                                     // 如果当前是IDLE状态，强制更新UI显示
                                     if (currentTimerState.timerPhase == TimerManager.Companion.TimerPhase.IDLE) {
                                         updateTimerState { it.copy(
-                                            timeLeftInSession = service.timeLeftInSession.value ?: 0L
+                                            timeLeftInSession = service.timeLeftInSession
                                         )}
                                     }
                                 }
@@ -318,48 +318,30 @@ class MainActivity : ComponentActivity() {
         // Update local UI state from service when connected
         studyTimerService?.let { service ->
             // 使用单一协程收集所有状态并更新到新的数据结构
+            // 使用单一状态流替代多个单独的状态流
+            // 符合高内聚、低耦合的设计原则
             timerStateJob = lifecycleScope.launch {
-                service.timerPhase.collect { timerStateValue ->
+                service.runtimeState.collect { runtimeState ->
                     updateTimerState { currentState ->
-                        currentState.copy(timerPhase = timerStateValue)
-                    }
-                }
-            }
-            
-            timeLeftJob = lifecycleScope.launch {
-                service.timeLeftInSession.collect { timeLeftValue ->
-                    updateTimerState { currentState ->
-                        currentState.copy(timeLeftInSession = timeLeftValue)
-                    }
-                }
-            }
-            
-            alarmTimeJob = lifecycleScope.launch {
-                service.timeUntilNextAlarm.collect { alarmTimeValue ->
-                    updateTimerState { currentState ->
-                        currentState.copy(timeUntilNextAlarm = alarmTimeValue)
-                    }
-                }
-            }
-            
-            elapsedTimeInFullCycleJob = lifecycleScope.launch {
-                service.elapsedTimeInFullCycleMillis.collect { elapsedTimeValue ->
-                    updateTimerState { currentState ->
-                        currentState.copy(elapsedTimeInFullCycle = elapsedTimeValue)
-                    }
-                }
-            }
-            
-            cycleCompletedJob = lifecycleScope.launch {
-                service.cycleCompleted.collect { cycleCompletedValue ->
-                    updateTimerState { currentState ->
-                        currentState.copy(cycleCompleted = cycleCompletedValue)
+                        currentState.copy(
+                            timerPhase = runtimeState.phase,
+                            timeLeftInSession = runtimeState.timeLeftInSession,
+                            timeUntilNextAlarm = runtimeState.timeUntilNextAlarm,
+                            elapsedTimeInFullCycle = runtimeState.elapsedTimeInFullCycle,
+                            cycleCompleted = runtimeState.cycleCompleted
+                        )
                     }
                     
                     // 周期完成状态变化时的处理现在由UI组件自动处理
                     // 符合高内聚、低耦合的设计原则
                 }
             }
+            
+            // 删除不再需要的多个单独的任务
+            timeLeftJob = null
+            alarmTimeJob = null
+            elapsedTimeInFullCycleJob = null
+            cycleCompletedJob = null
         }
     }
     
