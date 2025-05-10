@@ -298,19 +298,10 @@ class MainActivity : ComponentActivity() {
     
     // Coroutine job references to cancel previous collectors
     private var timerStateJob: Job? = null
-    private var timeLeftJob: Job? = null
-    private var alarmTimeJob: Job? = null
-    private var elapsedTimeInFullCycleJob: Job? = null
-    private var cycleCompletedJob: Job? = null
-    
+
     private fun updateUIFromService() {
         // Cancel any existing collectors
         timerStateJob?.cancel()
-        timeLeftJob?.cancel()
-        alarmTimeJob?.cancel()
-        elapsedTimeInFullCycleJob?.cancel()
-        cycleCompletedJob?.cancel()
-        
         // Update local UI state from service when connected
         studyTimerService?.let { service ->
             // 使用单一协程收集所有状态并更新到新的数据结构
@@ -332,12 +323,7 @@ class MainActivity : ComponentActivity() {
                     // 符合高内聚、低耦合的设计原则
                 }
             }
-            
-            // 删除不再需要的多个单独的任务
-            timeLeftJob = null
-            alarmTimeJob = null
-            elapsedTimeInFullCycleJob = null
-            cycleCompletedJob = null
+
         }
     }
     
