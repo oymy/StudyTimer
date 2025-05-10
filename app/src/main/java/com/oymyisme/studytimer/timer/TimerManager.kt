@@ -4,12 +4,12 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import androidx.lifecycle.ViewModel
+import com.oymyisme.model.TimerState
 import com.oymyisme.studytimer.model.TimerSettings
 import com.oymyisme.studytimer.BuildConfig
 import com.oymyisme.studytimer.model.EyeRestState
 import com.oymyisme.studytimer.model.TestMode
 import com.oymyisme.studytimer.model.TimerDurations
-import com.oymyisme.studytimer.model.TimerRuntimeState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,8 +32,8 @@ class TimerManager : ViewModel() {
     }
 
     // 使用单一状态流管理所有状态
-    private val _runtimeState = MutableStateFlow(TimerRuntimeState())
-    val runtimeState: StateFlow<TimerRuntimeState> = _runtimeState.asStateFlow()
+    private val _runtimeState = MutableStateFlow(TimerState())
+    val runtimeState: StateFlow<TimerState> = _runtimeState.asStateFlow()
     
     // 计时器实例管理
     private val timerInstances = TimerInstances()
@@ -113,7 +113,7 @@ class TimerManager : ViewModel() {
     /**
      * 更新运行时状态
      */
-    fun updateState(update: (TimerRuntimeState) -> TimerRuntimeState) {
+    fun updateState(update: (TimerState) -> TimerState) {
         _runtimeState.value = update(_runtimeState.value)
     }
 
@@ -138,7 +138,7 @@ class TimerManager : ViewModel() {
         // 使用单一方法更新状态
         updateState { state ->
             state.copy(
-                phase = Companion.TimerPhase.STUDYING,
+                timerPhase = Companion.TimerPhase.STUDYING,
                 timeLeftInSession = timerDurations.studyDurationMillis,
                 elapsedTimeInFullCycle = 0L,
                 cycleCompleted = false
@@ -161,7 +161,7 @@ class TimerManager : ViewModel() {
         
         updateState { state ->
             state.copy(
-                phase = Companion.TimerPhase.BREAK,
+                timerPhase = Companion.TimerPhase.BREAK,
                 timeLeftInSession = timerDurations.breakDurationMillis
             )
         }
@@ -195,7 +195,7 @@ class TimerManager : ViewModel() {
         
         // 在触发闹钟后立即计划下一次闹钟，确保循环继续
         Handler(Looper.getMainLooper()).postDelayed({
-            if (runtimeState.value.isStudying()) {
+            if (runtimeState.value.isStudying) {
                 if (BuildConfig.DEBUG) {
                     Log.d(TAG, "Scheduling next alarm after eye rest")
                 }
@@ -211,7 +211,7 @@ class TimerManager : ViewModel() {
     private fun startEyeRestTimer() {
         // 保存当前状态，以便在眼部休息结束后恢复
         eyeRestState = EyeRestState(
-            previousTimerPhase = runtimeState.value.phase,
+            previousTimerPhase = runtimeState.value.timerPhase,
             timeLeftBeforeEyeRest = runtimeState.value.timeLeftInSession,
             timeUntilNextAlarmBeforeEyeRest = runtimeState.value.timeUntilNextAlarm
         )
@@ -222,7 +222,7 @@ class TimerManager : ViewModel() {
         // 更新状态为眼睛休息
         updateState { state ->
             state.copy(
-                phase = Companion.TimerPhase.EYE_REST,
+                timerPhase = Companion.TimerPhase.EYE_REST,
                 timeLeftInSession = eyeRestDurationMs
             )
         }
@@ -246,7 +246,7 @@ class TimerManager : ViewModel() {
         
         // 重置状态
         updateState {
-            TimerRuntimeState() // 重置为默认状态
+            TimerState() // 重置为默认状态
         }
     }
 

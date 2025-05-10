@@ -116,7 +116,7 @@ class BreakStateStrategy : TimerStateStrategy {
             state.copy(
                 timeLeftInSession = 0L,
                 elapsedTimeInFullCycle = manager.timerDurations.totalCycleDurationMillis,
-                phase = TimerManager.Companion.TimerPhase.IDLE,
+                timerPhase = TimerManager.Companion.TimerPhase.IDLE,
                 cycleCompleted = true
             )
         }
@@ -168,7 +168,7 @@ class EyeRestStateStrategy : TimerStateStrategy {
         manager.updateState { state ->
             state.copy(
                 timeLeftInSession = 0L,
-                phase = manager.eyeRestState.previousTimerPhase
+                timerPhase = manager.eyeRestState.previousTimerPhase
             )
         }
         
@@ -254,7 +254,7 @@ class AlarmStateStrategy : TimerStateStrategy {
             Log.d(TimerManager.TAG, "Alarm timer finished")
         }
         
-        if (manager.runtimeState.value.isStudying()) {
+        if (manager.runtimeState.value.isStudying) {
             if (BuildConfig.DEBUG) {
                 Log.d(TimerManager.TAG, "Triggering eye rest alarm")
             }

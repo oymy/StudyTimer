@@ -6,6 +6,7 @@ import android.os.Binder
 import android.os.IBinder
 import android.os.PowerManager
 import android.util.Log
+import com.oymyisme.model.TimerState
 import com.oymyisme.studytimer.model.TimeUnit
 import com.oymyisme.studytimer.model.TimerSettings
 import com.oymyisme.studytimer.BuildConfig
@@ -14,7 +15,6 @@ import com.oymyisme.studytimer.media.AudioPlayerManager
 import com.oymyisme.studytimer.notification.NotificationHelper
 import com.oymyisme.studytimer.timer.TimerManager
 import com.oymyisme.studytimer.media.VibrationManager
-import com.oymyisme.studytimer.model.TimerRuntimeState
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -57,7 +57,7 @@ class StudyTimerService : Service() {
     private lateinit var vibrationManager: VibrationManager
 
     // 暴露状态流给 UI
-    val runtimeState: StateFlow<TimerRuntimeState>
+    val runtimeState: StateFlow<TimerState>
         get() = timerManager.runtimeState
 
     val timeLeftInSession: Long
@@ -269,7 +269,7 @@ class StudyTimerService : Service() {
     private fun updateNotification() {
         // 直接使用单一状态流
         val state = timerManager.runtimeState.value
-        val currentState = state.phase
+        val currentState = state.timerPhase
         val timeLeftInSession = state.timeLeftInSession
         val timeUntilNextAlarm = state.timeUntilNextAlarm
 
@@ -323,7 +323,7 @@ class StudyTimerService : Service() {
         timerManager.configure(timerSettings)
 
         // 如果当前是空闲状态，更新显示的时间
-        if (timerManager.runtimeState.value.isIdle()) {
+        if (timerManager.runtimeState.value.isIdle) {
             // 直接重新启动计时器，这将更新剩余时间
             timerManager.configure(timerSettings)
         }

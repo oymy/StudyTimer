@@ -320,7 +320,7 @@ class MainActivity : ComponentActivity() {
                 service.runtimeState.collect { runtimeState ->
                     updateTimerState { currentState ->
                         currentState.copy(
-                            timerPhase = runtimeState.phase,
+                            timerPhase = runtimeState.timerPhase,
                             timeLeftInSession = runtimeState.timeLeftInSession,
                             timeUntilNextAlarm = runtimeState.timeUntilNextAlarm,
                             elapsedTimeInFullCycle = runtimeState.elapsedTimeInFullCycle,
