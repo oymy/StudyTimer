@@ -5,8 +5,11 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import com.oymyisme.model.TimerSettings
+import com.oymyisme.model.TimerState as ModelTimerState
 import com.oymyisme.studytimer.BuildConfig
+import com.oymyisme.studytimer.model.EyeRestState
 import com.oymyisme.studytimer.model.TestMode
+import com.oymyisme.studytimer.model.TimerDurations
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -56,17 +59,15 @@ class TimerManager {
     // 计时器设置
     private lateinit var timerSettings: TimerSettings
 
-    // 眼睛休息前的状态保存
-    private var _previousTimerStateBeforeEyeRest: Companion.TimerState = Companion.TimerState.IDLE
-    private var _timeLeftBeforeEyeRest: Long = 0
-    private var _timeUntilNextAlarmBeforeEyeRest: Long = 0
+    // 眼睛休息相关状态，使用数据类封装
+    private var eyeRestState = EyeRestState()
+    
+    // 眼睛休息前的计时器实例
     private var _studyTimerBeforeEyeRest: CountDownTimer? = null
     private var _alarmTimerBeforeEyeRest: CountDownTimer? = null
 
-    // 内部计算用的时间值
-    private var mStudyDurationMillis: Long = 0
-    private var mBreakDurationMillis: Long = 0
-    private var mTotalCycleDurationMillis: Long = 0
+    // 内部计算用的时间值，使用数据类封装
+    private var timerDurations = TimerDurations()
     
     // 使用 TimerSettings 数据类中的方法获取时间值
     val studyTimeMs: Long
@@ -123,31 +124,34 @@ class TimerManager {
 
     /**
      * 更新内部计算用的时间值
+     * 使用 TimerDurations 数据类管理时间值，提高代码内聚性
      */
     private fun updateInternalDurations() {
-        mStudyDurationMillis = studyTimeMs
-        mBreakDurationMillis = breakTimeMs
-        mTotalCycleDurationMillis = mStudyDurationMillis + mBreakDurationMillis
+        timerDurations = TimerDurations(
+            studyDurationMillis = studyTimeMs,
+            breakDurationMillis = breakTimeMs
+        )
     }
 
     /**
      * 开始学习会话
+     * 使用 TimerDurations 数据类管理时间值，提高代码内聚性
      */
     fun startStudySession() {
         stopAllTimers()
         _timerState.value = Companion.TimerState.STUDYING
-        _timeLeftInSession.value = studyTimeMs
+        _timeLeftInSession.value = timerDurations.studyDurationMillis
         _elapsedTimeInFullCycleMillis.value = 0L // 重置周期进度
         _cycleCompleted.value = false
 
         if (BuildConfig.DEBUG) {
-            Log.d(TAG, "Starting study session. Duration: ${studyTimeMs}ms")
+            Log.d(TAG, "Starting study session. Duration: ${timerDurations.studyDurationMillis}ms")
         }
 
-        sessionTimer = object : CountDownTimer(studyTimeMs, 1000) {
+        sessionTimer = object : CountDownTimer(timerDurations.studyDurationMillis, 1000) {
             override fun onTick(millisUntilFinished: Long) {
                 _timeLeftInSession.value = millisUntilFinished
-                _elapsedTimeInFullCycleMillis.value = mStudyDurationMillis - millisUntilFinished
+                _elapsedTimeInFullCycleMillis.value = timerDurations.studyDurationMillis - millisUntilFinished
                 callback?.onTimerTick(millisUntilFinished)
             }
             
@@ -156,7 +160,7 @@ class TimerManager {
                     Log.d(TAG, "Study session finished")
                 }
                 _timeLeftInSession.value = 0L
-                _elapsedTimeInFullCycleMillis.value = mStudyDurationMillis
+                _elapsedTimeInFullCycleMillis.value = timerDurations.studyDurationMillis
                 callback?.onStudySessionFinished()
                 startBreakSession()
             }
@@ -167,19 +171,22 @@ class TimerManager {
 
     /**
      * 开始休息会话
+     * 使用 TimerDurations 数据类管理时间值，提高代码内聚性
      */
     private fun startBreakSession() {
+        stopAllTimers()
         _timerState.value = Companion.TimerState.BREAK
-        _timeLeftInSession.value = breakTimeMs
+        _timeLeftInSession.value = timerDurations.breakDurationMillis
 
         if (BuildConfig.DEBUG) {
-            Log.d(TAG, "Starting break session. Duration: ${breakTimeMs}ms")
+            Log.d(TAG, "Starting break session. Duration: ${timerDurations.breakDurationMillis}ms")
         }
 
-        sessionTimer = object : CountDownTimer(breakTimeMs, 1000) {
+        sessionTimer = object : CountDownTimer(timerDurations.breakDurationMillis, 1000) {
             override fun onTick(millisUntilFinished: Long) {
                 _timeLeftInSession.value = millisUntilFinished
-                _elapsedTimeInFullCycleMillis.value = mStudyDurationMillis + (mBreakDurationMillis - millisUntilFinished)
+                // 使用 TimerDurations 计算周期进度
+                _elapsedTimeInFullCycleMillis.value = timerDurations.studyDurationMillis + (timerDurations.breakDurationMillis - millisUntilFinished)
                 callback?.onTimerTick(millisUntilFinished)
             }
             
@@ -188,7 +195,7 @@ class TimerManager {
                     Log.d(TAG, "Break session finished")
                 }
                 _timeLeftInSession.value = 0L
-                _elapsedTimeInFullCycleMillis.value = mTotalCycleDurationMillis
+                _elapsedTimeInFullCycleMillis.value = timerDurations.totalCycleDurationMillis
                 callback?.onBreakFinished()
                 
                 // 通知UI周期已完成
@@ -283,12 +290,15 @@ class TimerManager {
 
     /**
      * 开始眼睛休息计时器
+     * 使用 EyeRestState 数据类保存眼睛休息前的状态，提高代码内聚性
      */
     private fun startEyeRestTimer() {
         // 保存当前状态，以便在眼部休息结束后恢复
-        _previousTimerStateBeforeEyeRest = _timerState.value
-        _timeLeftBeforeEyeRest = _timeLeftInSession.value
-        _timeUntilNextAlarmBeforeEyeRest = _timeUntilNextAlarm.value
+        eyeRestState = EyeRestState(
+            previousTimerState = _timerState.value,
+            timeLeftBeforeEyeRest = _timeLeftInSession.value,
+            timeUntilNextAlarmBeforeEyeRest = _timeUntilNextAlarm.value
+        )
         _studyTimerBeforeEyeRest = sessionTimer
         _alarmTimerBeforeEyeRest = alarmTimer
         
@@ -322,12 +332,12 @@ class TimerManager {
                 callback?.onEyeRestFinished()
                 
                 // 恢复到之前的状态（应该是 STUDYING）
-                _timerState.value = _previousTimerStateBeforeEyeRest
+                _timerState.value = eyeRestState.previousTimerState
                 
-                if (_previousTimerStateBeforeEyeRest == Companion.TimerState.STUDYING) {
+                if (eyeRestState.previousTimerState == Companion.TimerState.STUDYING) {
                     // 恢复显示的剩余学习时间
-                    _timeLeftInSession.value = _timeLeftBeforeEyeRest
-                    _timeUntilNextAlarm.value = _timeUntilNextAlarmBeforeEyeRest
+                    _timeLeftInSession.value = eyeRestState.timeLeftBeforeEyeRest
+                    _timeUntilNextAlarm.value = eyeRestState.timeUntilNextAlarmBeforeEyeRest
                     
                     if (BuildConfig.DEBUG) {
                         Log.d(TAG, "Resumed study display after eye rest")
