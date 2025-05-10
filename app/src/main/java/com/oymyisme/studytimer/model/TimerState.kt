@@ -10,7 +10,7 @@ import java.util.concurrent.TimeUnit
  * 遵循高内聚、低耦合的设计原则，将相关的状态和计算逻辑集中在一个类中
  */
 data class TimerState(
-    val timerState: TimerManager.Companion.TimerState = TimerManager.Companion.TimerState.IDLE,
+    val timerPhase: TimerManager.Companion.TimerPhase = TimerManager.Companion.TimerPhase.IDLE,
     val timeLeftInSession: Long = 0L,
     val timeUntilNextAlarm: Long = 0L,
     val elapsedTimeInFullCycle: Long = 0L,
@@ -28,7 +28,7 @@ data class TimerState(
          */
         fun idle(timeLeftInSession: Long = 0L, elapsedTimeInFullCycle: Long = 0L, cycleCompleted: Boolean = false): TimerState {
             return TimerState(
-                timerState = TimerManager.Companion.TimerState.IDLE,
+                timerPhase = TimerManager.Companion.TimerPhase.IDLE,
                 timeLeftInSession = timeLeftInSession,
                 timeUntilNextAlarm = 0L,
                 elapsedTimeInFullCycle = elapsedTimeInFullCycle,
@@ -46,7 +46,7 @@ data class TimerState(
          */
         fun studying(timeLeftInSession: Long, timeUntilNextAlarm: Long, elapsedTimeInFullCycle: Long): TimerState {
             return TimerState(
-                timerState = TimerManager.Companion.TimerState.STUDYING,
+                timerPhase = TimerManager.Companion.TimerPhase.STUDYING,
                 timeLeftInSession = timeLeftInSession,
                 timeUntilNextAlarm = timeUntilNextAlarm,
                 elapsedTimeInFullCycle = elapsedTimeInFullCycle,
@@ -63,7 +63,7 @@ data class TimerState(
          */
         fun breakState(timeLeftInSession: Long, elapsedTimeInFullCycle: Long): TimerState {
             return TimerState(
-                timerState = TimerManager.Companion.TimerState.BREAK,
+                timerPhase = TimerManager.Companion.TimerPhase.BREAK,
                 timeLeftInSession = timeLeftInSession,
                 timeUntilNextAlarm = 0L,
                 elapsedTimeInFullCycle = elapsedTimeInFullCycle,
@@ -80,7 +80,7 @@ data class TimerState(
          */
         fun eyeRest(timeLeftInSession: Long, elapsedTimeInFullCycle: Long): TimerState {
             return TimerState(
-                timerState = TimerManager.Companion.TimerState.EYE_REST,
+                timerPhase = TimerManager.Companion.TimerPhase.EYE_REST,
                 timeLeftInSession = timeLeftInSession,
                 timeUntilNextAlarm = 0L,
                 elapsedTimeInFullCycle = elapsedTimeInFullCycle,
@@ -92,25 +92,25 @@ data class TimerState(
      * 判断计时器是否处于空闲状态
      */
     val isIdle: Boolean
-        get() = timerState == TimerManager.Companion.TimerState.IDLE
+        get() = timerPhase == TimerManager.Companion.TimerPhase.IDLE
     
     /**
      * 判断计时器是否处于学习状态
      */
     val isStudying: Boolean
-        get() = timerState == TimerManager.Companion.TimerState.STUDYING
+        get() = timerPhase == TimerManager.Companion.TimerPhase.STUDYING
     
     /**
      * 判断计时器是否处于休息状态
      */
     val isBreak: Boolean
-        get() = timerState == TimerManager.Companion.TimerState.BREAK
+        get() = timerPhase == TimerManager.Companion.TimerPhase.BREAK
     
     /**
      * 判断计时器是否处于眼睛休息状态
      */
     val isEyeRest: Boolean
-        get() = timerState == TimerManager.Companion.TimerState.EYE_REST
+        get() = timerPhase == TimerManager.Companion.TimerPhase.EYE_REST
     
     /**
      * 判断计时器是否处于学习阶段（包括学习和眼睛休息）
@@ -197,11 +197,11 @@ data class TimerState(
     /**
      * 创建一个新的 TimerState 实例，更新计时器状态
      * 
-     * @param newTimerState 新的计时器状态
+     * @param newTimerPhase 新的计时器状态
      * @return 新的 TimerState 实例
      */
-    fun copyWithTimerState(newTimerState: TimerManager.Companion.TimerState): TimerState {
-        return this.copy(timerState = newTimerState)
+    fun copyWithTimerState(newTimerPhase: TimerManager.Companion.TimerPhase): TimerState {
+        return this.copy(timerPhase = newTimerPhase)
     }
     
     /**

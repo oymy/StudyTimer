@@ -69,14 +69,14 @@ class NotificationHelper private constructor(private val context: Context) {
     /**
      * 创建前台服务通知
      * 
-     * @param timerState 当前计时器状态
+     * @param timerPhase 当前计时器状态
      * @param timeLeftInSession 会话剩余时间
      * @param showNextAlarmTime 是否显示下一次闹钟时间
      * @param timeUntilNextAlarm 下一次闹钟剩余时间
      * @return 通知对象
      */
     fun createNotification(
-        timerState: TimerManager.Companion.TimerState,
+        timerPhase: TimerManager.Companion.TimerPhase,
         timeLeftInSession: Long,
         showNextAlarmTime: Boolean,
         timeUntilNextAlarm: Long
@@ -108,7 +108,7 @@ class NotificationHelper private constructor(private val context: Context) {
         
         // 更新通知内容
         val title = context.getString(R.string.notification_title)
-        val contentText = getNotificationContentText(timerState, timeLeftInSession, showNextAlarmTime, timeUntilNextAlarm)
+        val contentText = getNotificationContentText(timerPhase, timeLeftInSession, showNextAlarmTime, timeUntilNextAlarm)
         
         notificationBuilder?.apply {
             setContentTitle(title)
@@ -122,16 +122,16 @@ class NotificationHelper private constructor(private val context: Context) {
      * 获取通知内容文本
      */
     private fun getNotificationContentText(
-        timerState: TimerManager.Companion.TimerState,
+        timerPhase: TimerManager.Companion.TimerPhase,
         timeLeftInSession: Long,
         showNextAlarmTime: Boolean,
         timeUntilNextAlarm: Long
     ): String {
         val timeLeftFormatted = formatTime(timeLeftInSession)
         
-        return when (timerState) {
-            TimerManager.Companion.TimerState.IDLE -> context.getString(R.string.notification_idle)
-            TimerManager.Companion.TimerState.STUDYING -> {
+        return when (timerPhase) {
+            TimerManager.Companion.TimerPhase.IDLE -> context.getString(R.string.notification_idle)
+            TimerManager.Companion.TimerPhase.STUDYING -> {
                 if (showNextAlarmTime) {
                     val nextAlarmFormatted = formatTime(timeUntilNextAlarm)
                     context.getString(R.string.notification_studying_with_alarm, timeLeftFormatted, nextAlarmFormatted)
@@ -139,8 +139,8 @@ class NotificationHelper private constructor(private val context: Context) {
                     context.getString(R.string.notification_studying, timeLeftFormatted)
                 }
             }
-            TimerManager.Companion.TimerState.BREAK -> context.getString(R.string.notification_break, timeLeftFormatted)
-            TimerManager.Companion.TimerState.EYE_REST -> context.getString(R.string.notification_eye_rest, timeLeftFormatted)
+            TimerManager.Companion.TimerPhase.BREAK -> context.getString(R.string.notification_break, timeLeftFormatted)
+            TimerManager.Companion.TimerPhase.EYE_REST -> context.getString(R.string.notification_eye_rest, timeLeftFormatted)
             else -> context.getString(R.string.notification_idle) // 默认情况
         }
     }
@@ -149,12 +149,12 @@ class NotificationHelper private constructor(private val context: Context) {
      * 更新通知
      */
     fun updateNotification(
-        timerState: TimerManager.Companion.TimerState,
+        timerPhase: TimerManager.Companion.TimerPhase,
         timeLeftInSession: Long,
         showNextAlarmTime: Boolean,
         timeUntilNextAlarm: Long
     ) {
-        val notification = createNotification(timerState, timeLeftInSession, showNextAlarmTime, timeUntilNextAlarm)
+        val notification = createNotification(timerPhase, timeLeftInSession, showNextAlarmTime, timeUntilNextAlarm)
         systemNotificationManager.notify(NOTIFICATION_ID, notification)
     }
     

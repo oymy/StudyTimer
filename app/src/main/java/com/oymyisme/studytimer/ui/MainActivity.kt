@@ -268,7 +268,7 @@ class MainActivity : ComponentActivity() {
                                     service.updateTestMode(enabled, currentSettings.studyDurationMin)
                                     
                                     // 如果当前是IDLE状态，强制更新UI显示
-                                    if (currentTimerState.timerState == TimerManager.Companion.TimerState.IDLE) {
+                                    if (currentTimerState.timerPhase == TimerManager.Companion.TimerPhase.IDLE) {
                                         updateTimerState { it.copy(
                                             timeLeftInSession = service.timeLeftInSession.value ?: 0L
                                         )}
@@ -319,9 +319,9 @@ class MainActivity : ComponentActivity() {
         studyTimerService?.let { service ->
             // 使用单一协程收集所有状态并更新到新的数据结构
             timerStateJob = lifecycleScope.launch {
-                service.timerState.collect { timerStateValue ->
+                service.timerPhase.collect { timerStateValue ->
                     updateTimerState { currentState ->
-                        currentState.copy(timerState = timerStateValue)
+                        currentState.copy(timerPhase = timerStateValue)
                     }
                 }
             }
@@ -414,7 +414,7 @@ class MainActivity : ComponentActivity() {
         // 立即更新UI状态
         updateTimerState { currentState ->
             currentState.copy(
-                timerState = TimerManager.Companion.TimerState.STUDYING,
+                timerPhase = TimerManager.Companion.TimerPhase.STUDYING,
                 timeLeftInSession = currentSettings.studyDurationMin * 60 * 1000L, // 将分钟转换为毫秒
                 timeUntilNextAlarm = currentSettings.minAlarmIntervalMin * 60 * 1000L // 初始闹钟时间
             )
@@ -430,7 +430,7 @@ class MainActivity : ComponentActivity() {
         // 立即更新UI状态
         updateTimerState { currentState ->
             currentState.copy(
-                timerState = TimerManager.Companion.TimerState.IDLE,
+                timerPhase = TimerManager.Companion.TimerPhase.IDLE,
                 timeLeftInSession = 0L,
                 timeUntilNextAlarm = 0L
             )

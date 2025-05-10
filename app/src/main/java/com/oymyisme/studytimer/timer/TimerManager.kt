@@ -5,7 +5,6 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import com.oymyisme.model.TimerSettings
-import com.oymyisme.model.TimerState as ModelTimerState
 import com.oymyisme.studytimer.BuildConfig
 import com.oymyisme.studytimer.model.EyeRestState
 import com.oymyisme.studytimer.model.TestMode
@@ -27,7 +26,7 @@ class TimerManager {
         
         // 计时器状态
         // 保留枚举类型以保持兼容性，但内部使用 ModelTimerState 数据类
-        enum class TimerState {
+        enum class TimerPhase {
             IDLE, STUDYING, EYE_REST, BREAK
         }
     }
@@ -38,8 +37,8 @@ class TimerManager {
     private var eyeRestTimer: CountDownTimer? = null
 
     // 状态流
-    private val _timerState = MutableStateFlow(Companion.TimerState.IDLE)
-    val timerState: StateFlow<Companion.TimerState> = _timerState.asStateFlow()
+    private val _timerPhase = MutableStateFlow(Companion.TimerPhase.IDLE)
+    val timerPhase: StateFlow<Companion.TimerPhase> = _timerPhase.asStateFlow()
     
     private val _timeLeftInSession = MutableStateFlow(0L)
     val timeLeftInSession: StateFlow<Long> = _timeLeftInSession.asStateFlow()
@@ -139,7 +138,7 @@ class TimerManager {
      */
     fun startStudySession() {
         stopAllTimers()
-        _timerState.value = Companion.TimerState.STUDYING
+        _timerPhase.value = Companion.TimerPhase.STUDYING
         _timeLeftInSession.value = timerDurations.studyDurationMillis
         _elapsedTimeInFullCycleMillis.value = 0L // 重置周期进度
         _cycleCompleted.value = false
@@ -175,7 +174,7 @@ class TimerManager {
      */
     private fun startBreakSession() {
         stopAllTimers()
-        _timerState.value = Companion.TimerState.BREAK
+        _timerPhase.value = Companion.TimerPhase.BREAK
         _timeLeftInSession.value = timerDurations.breakDurationMillis
 
         if (BuildConfig.DEBUG) {
@@ -203,7 +202,7 @@ class TimerManager {
                 callback?.onCycleCompleted()
                 
                 // 重置为IDLE状态
-                _timerState.value = Companion.TimerState.IDLE
+                _timerPhase.value = Companion.TimerPhase.IDLE
             }
         }.start()
     }
@@ -252,7 +251,7 @@ class TimerManager {
                 if (BuildConfig.DEBUG) {
                     Log.d(TAG, "Alarm timer finished")
                 }
-                if (_timerState.value == Companion.TimerState.STUDYING) {
+                if (_timerPhase.value == Companion.TimerPhase.STUDYING) {
                     if (BuildConfig.DEBUG) {
                         Log.d(TAG, "Triggering eye rest alarm")
                     }
@@ -279,7 +278,7 @@ class TimerManager {
         
         // 在触发闹钟后立即计划下一次闹钟，确保循环继续
         Handler(Looper.getMainLooper()).postDelayed({
-            if (_timerState.value == Companion.TimerState.STUDYING) {
+            if (_timerPhase.value == Companion.TimerPhase.STUDYING) {
                 if (BuildConfig.DEBUG) {
                     Log.d(TAG, "Scheduling next alarm after eye rest")
                 }
@@ -295,7 +294,7 @@ class TimerManager {
     private fun startEyeRestTimer() {
         // 保存当前状态，以便在眼部休息结束后恢复
         eyeRestState = EyeRestState(
-            previousTimerState = _timerState.value,
+            previousTimerPhase = _timerPhase.value,
             timeLeftBeforeEyeRest = _timeLeftInSession.value,
             timeUntilNextAlarmBeforeEyeRest = _timeUntilNextAlarm.value
         )
@@ -303,7 +302,7 @@ class TimerManager {
         _alarmTimerBeforeEyeRest = alarmTimer
         
         // 切换到眼部休息状态
-        _timerState.value = Companion.TimerState.EYE_REST
+        _timerPhase.value = Companion.TimerPhase.EYE_REST
         _timeLeftInSession.value = TestMode.TEST_EYE_REST_TIME_MS
         
         if (BuildConfig.DEBUG) {
@@ -332,9 +331,9 @@ class TimerManager {
                 callback?.onEyeRestFinished()
                 
                 // 恢复到之前的状态（应该是 STUDYING）
-                _timerState.value = eyeRestState.previousTimerState
+                _timerPhase.value = eyeRestState.previousTimerPhase
                 
-                if (eyeRestState.previousTimerState == Companion.TimerState.STUDYING) {
+                if (eyeRestState.previousTimerPhase == Companion.TimerPhase.STUDYING) {
                     // 恢复显示的剩余学习时间
                     _timeLeftInSession.value = eyeRestState.timeLeftBeforeEyeRest
                     _timeUntilNextAlarm.value = eyeRestState.timeUntilNextAlarmBeforeEyeRest
@@ -367,7 +366,7 @@ class TimerManager {
         eyeRestTimer = null
         
         // 重置状态
-        _timerState.value = Companion.TimerState.IDLE
+        _timerPhase.value = Companion.TimerPhase.IDLE
         _timeLeftInSession.value = 0L
         _timeUntilNextAlarm.value = 0L
         _elapsedTimeInFullCycleMillis.value = 0L
@@ -383,7 +382,7 @@ class TimerManager {
     /**
      * 获取当前的计时器状态
      */
-    fun getCurrentState(): Companion.TimerState {
-        return _timerState.value
+    fun getCurrentState(): Companion.TimerPhase {
+        return _timerPhase.value
     }
 }

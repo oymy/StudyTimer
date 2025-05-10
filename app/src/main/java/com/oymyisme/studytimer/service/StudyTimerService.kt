@@ -57,8 +57,8 @@ class StudyTimerService : Service() {
     private lateinit var vibrationManager: VibrationManager
 
     // 暴露状态流给 UI
-    val timerState: StateFlow<TimerManager.Companion.TimerState>
-        get() = timerManager.timerState
+    val timerPhase: StateFlow<TimerManager.Companion.TimerPhase>
+        get() = timerManager.timerPhase
 
     val timeLeftInSession: StateFlow<Long>
         get() = timerManager.timeLeftInSession
@@ -208,7 +208,7 @@ class StudyTimerService : Service() {
 
                     // 创建初始通知，使用 TimerSettings 对象的属性
                     val initialNotification = notificationManager.createNotification(
-                        TimerManager.Companion.TimerState.IDLE,
+                        TimerManager.Companion.TimerPhase.IDLE,
                         0L,
                         timerSettings.showNextAlarmTime,
                         0L
@@ -269,28 +269,28 @@ class StudyTimerService : Service() {
      */
     private fun updateNotification() {
         // 创建 TimerState 对象，封装当前状态
-        val currentState = timerManager.timerState.value
+        val currentState = timerManager.timerPhase.value
         val timeLeftInSession = timerManager.timeLeftInSession.value ?: 0L
         val timeUntilNextAlarm = timerManager.timeUntilNextAlarm.value ?: 0L
         val elapsedTimeInFullCycle = timerManager.elapsedTimeInFullCycleMillis.value ?: 0L
         val cycleCompleted = timerManager.cycleCompleted.value
 
-        val timerState = when (currentState) {
-            TimerManager.Companion.TimerState.IDLE -> com.oymyisme.model.TimerState.idle(
+        val timerPhase = when (currentState) {
+            TimerManager.Companion.TimerPhase.IDLE -> com.oymyisme.model.TimerState.idle(
                 timeLeftInSession = timeLeftInSession,
                 elapsedTimeInFullCycle = elapsedTimeInFullCycle,
                 cycleCompleted = cycleCompleted
             )
-            TimerManager.Companion.TimerState.STUDYING -> com.oymyisme.model.TimerState.studying(
+            TimerManager.Companion.TimerPhase.STUDYING -> com.oymyisme.model.TimerState.studying(
                 timeLeftInSession = timeLeftInSession,
                 timeUntilNextAlarm = timeUntilNextAlarm,
                 elapsedTimeInFullCycle = elapsedTimeInFullCycle
             )
-            TimerManager.Companion.TimerState.BREAK -> com.oymyisme.model.TimerState.breakState(
+            TimerManager.Companion.TimerPhase.BREAK -> com.oymyisme.model.TimerState.breakState(
                 timeLeftInSession = timeLeftInSession,
                 elapsedTimeInFullCycle = elapsedTimeInFullCycle
             )
-            TimerManager.Companion.TimerState.EYE_REST -> com.oymyisme.model.TimerState.eyeRest(
+            TimerManager.Companion.TimerPhase.EYE_REST -> com.oymyisme.model.TimerState.eyeRest(
                 timeLeftInSession = timeLeftInSession,
                 elapsedTimeInFullCycle = elapsedTimeInFullCycle
             )
@@ -347,7 +347,7 @@ class StudyTimerService : Service() {
         timerManager.configure(timerSettings)
 
         // 如果当前是空闲状态，更新显示的时间
-        if (timerManager.timerState.value == TimerManager.Companion.TimerState.IDLE) {
+        if (timerManager.timerPhase.value == TimerManager.Companion.TimerPhase.IDLE) {
             // 直接重新启动计时器，这将更新剩余时间
             timerManager.configure(timerSettings)
         }
