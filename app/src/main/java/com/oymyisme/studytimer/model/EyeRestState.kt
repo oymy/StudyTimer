@@ -15,23 +15,8 @@ data class EyeRestState(
 ) {
     /**
      * 创建新的眼睛休息状态
-     * 
-     * @param previousState 进入眼睛休息前的状态
-     * @param timeLeft 进入眼睛休息前的剩余时间
-     * @param timeUntilNextAlarm 进入眼睛休息前的下一次闹钟时间
+     *
      * @return 新的眼睛休息状态
      */
-    companion object {
-        fun create(
-            previousState: TimerManager.Companion.TimerPhase,
-            timeLeft: Long,
-            timeUntilNextAlarm: Long
-        ): EyeRestState {
-            return EyeRestState(
-                previousTimerPhase = previousState,
-                timeLeftBeforeEyeRest = timeLeft,
-                timeUntilNextAlarmBeforeEyeRest = timeUntilNextAlarm
-            )
-        }
-    }
+    companion object
 }

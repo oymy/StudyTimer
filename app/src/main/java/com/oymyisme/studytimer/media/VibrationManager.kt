@@ -47,7 +47,7 @@ class VibrationManager private constructor(private val context: Context) {
      * @param pattern 振动模式
      * @param repeat 重复索引，-1表示不重复
      */
-    fun vibrate(pattern: LongArray, repeat: Int = -1) {
+    private fun vibrate(pattern: LongArray, repeat: Int = -1) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val effect = VibrationEffect.createWaveform(pattern, repeat)
             vibrator.vibrate(effect)
@@ -64,7 +64,7 @@ class VibrationManager private constructor(private val context: Context) {
     /**
      * 执行闹钟振动
      */
-    fun vibrateAlarm() {
+    private fun vibrateAlarm() {
         vibrate(VIBRATE_PATTERN_ALARM)
     }
     
@@ -81,22 +81,5 @@ class VibrationManager private constructor(private val context: Context) {
     fun vibrateShort() {
         vibrate(VIBRATE_PATTERN_SHORT)
     }
-    
-    /**
-     * 取消振动
-     */
-    fun cancelVibration() {
-        vibrator.cancel()
-        
-        if (BuildConfig.DEBUG) {
-            Log.d(TAG, "Vibration cancelled")
-        }
-    }
-    
-    /**
-     * 检查设备是否支持振动
-     */
-    fun hasVibrator(): Boolean {
-        return vibrator.hasVibrator()
-    }
+
 }

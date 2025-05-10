@@ -10,9 +10,10 @@ import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.oymyisme.studytimer.BuildConfig
-import com.oymyisme.studytimer.ui.MainActivity
 import com.oymyisme.studytimer.R
 import com.oymyisme.studytimer.timer.TimerManager
+import com.oymyisme.studytimer.ui.MainActivity
+import java.util.Locale
 
 /**
  * 通知管理器类
@@ -164,13 +165,7 @@ class NotificationHelper private constructor(private val context: Context) {
     private fun formatTime(timeMillis: Long): String {
         val minutes = timeMillis / 60000
         val seconds = (timeMillis % 60000) / 1000
-        return String.format("%d:%02d", minutes, seconds)
+        return String.format(Locale.ENGLISH,"%d:%02d", minutes, seconds)
     }
-    
-    /**
-     * 取消所有通知
-     */
-    fun cancelAllNotifications() {
-        systemNotificationManager.cancelAll()
-    }
+
 }

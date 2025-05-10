@@ -20,7 +20,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
-import com.oymyisme.model.TimerSettings
+import com.oymyisme.studytimer.model.TimerSettings
 import com.oymyisme.model.TimerState
 import com.oymyisme.studytimer.model.ThemeMode
 import com.oymyisme.studytimer.model.ThemeSettings
@@ -28,7 +28,6 @@ import com.oymyisme.studytimer.timer.TimerManager
 import com.oymyisme.studytimer.ui.theme.StudyTimerTheme
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import androidx.core.content.edit
 import com.oymyisme.studytimer.model.SoundOptions
@@ -44,12 +43,10 @@ class MainActivity : ComponentActivity() {
     
     // 计时器设置状态流
     private val _timerSettings = MutableStateFlow(TimerSettings())
-    val timerSettings: StateFlow<TimerSettings> = _timerSettings
-    
+
     // 计时器状态流
     private val _timerState = MutableStateFlow(TimerState())
-    val timerState: StateFlow<TimerState> = _timerState
-    
+
     // Service connection
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
@@ -85,7 +82,7 @@ class MainActivity : ComponentActivity() {
     /**
      * 更新计时器设置
      */
-    fun updateSettings(update: (TimerSettings) -> TimerSettings) {
+    private fun updateSettings(update: (TimerSettings) -> TimerSettings) {
         _timerSettings.value = update(_timerSettings.value)
         // 保存到 SharedPreferences
         saveSettings()
@@ -220,7 +217,7 @@ class MainActivity : ComponentActivity() {
 
                     showSettings -> {
                         // 显示常规设置界面
-                        val currentSettings = _timerSettings.collectAsState().value
+                        _timerSettings.collectAsState().value
                         
                         SettingsScreen(
                             timerSettings = _timerSettings,
@@ -241,13 +238,12 @@ class MainActivity : ComponentActivity() {
                         val currentSettings = _timerSettings.collectAsState().value
                         
                         // 直接使用TimerSettings中的breakDurationMin属性，提高代码内聚性
-                        val breakDurationMin = currentSettings.breakDurationMin
+                        currentSettings.breakDurationMin
                         
                         // 直接使用数据类传递给UI组件，提高代码可维护性
                         StudyTimerApp(
                             timerState = currentTimerState,
                             settings = currentSettings,
-                            testModeChangeTrigger = _testModeChangeTrigger.collectAsState().value,
                             onStartClick = { startStudySession() },
                             onStopClick = { stopStudySession() },
                             onSettingsClick = {
@@ -256,17 +252,17 @@ class MainActivity : ComponentActivity() {
                             onTestModeToggle = { enabled ->
                                 // 更新测试模式状态
                                 updateSettings { it.copy(testModeEnabled = enabled) }
-                                
+
                                 // 更新TestMode类中的isEnabled属性
                                 TestMode.isEnabled = enabled
-                                
+
                                 // 更新触发器值，强制UI重组
                                 _testModeChangeTrigger.value = System.currentTimeMillis().toString()
-                                
+
                                 // 直接通知服务更新测试模式状态
                                 studyTimerService?.let { service ->
                                     service.updateTestMode(enabled, currentSettings.studyDurationMin)
-                                    
+
                                     // 如果当前是IDLE状态，强制更新UI显示
                                     if (currentTimerState.timerPhase == TimerManager.Companion.TimerPhase.IDLE) {
                                         updateTimerState { it.copy(
@@ -274,7 +270,7 @@ class MainActivity : ComponentActivity() {
                                         )}
                                     }
                                 }
-                                
+
                                 // 立即显示更新结果
                                 Toast.makeText(
                                     this@MainActivity,

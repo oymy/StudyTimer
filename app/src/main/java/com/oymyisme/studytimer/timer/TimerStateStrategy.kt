@@ -3,7 +3,6 @@ package com.oymyisme.studytimer.timer
 import android.os.CountDownTimer
 import android.util.Log
 import com.oymyisme.studytimer.BuildConfig
-import com.oymyisme.studytimer.model.TimerRuntimeState
 
 /**
  * 计时器状态策略接口

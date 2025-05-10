@@ -20,12 +20,7 @@ object SoundOptions {
     // 默认提示音类型
     const val DEFAULT_ALARM_SOUND_TYPE = "DEFAULT_NOTIFICATION"
     const val DEFAULT_EYE_REST_SOUND_TYPE = "DEFAULT_NOTIFICATION"
-    
-    // 提示音类型常量
-    const val TYPE_NOTIFICATION = "NOTIFICATION"
-    const val TYPE_ALARM = "ALARM"
-    const val TYPE_RINGTONE = "RINGTONE"
-    
+
     /**
      * 获取系统提示音列表
      */

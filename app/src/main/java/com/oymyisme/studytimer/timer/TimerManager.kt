@@ -1,23 +1,18 @@
 package com.oymyisme.studytimer.timer
 
-import android.os.CountDownTimer
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import com.oymyisme.model.TimerSettings
+import com.oymyisme.studytimer.model.TimerSettings
 import com.oymyisme.studytimer.BuildConfig
 import com.oymyisme.studytimer.model.EyeRestState
 import com.oymyisme.studytimer.model.TestMode
 import com.oymyisme.studytimer.model.TimerDurations
 import com.oymyisme.studytimer.model.TimerRuntimeState
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import java.util.Random
 
 /**
@@ -78,9 +73,6 @@ class TimerManager : ViewModel() {
     
     val maxAlarmIntervalMs: Long
         get() = if (::timerSettings.isInitialized) timerSettings.maxAlarmIntervalMs else 0L
-        
-    val testModeEnabled: Boolean
-        get() = if (::timerSettings.isInitialized) timerSettings.testModeEnabled else false
 
     // 回调接口
     interface TimerCallback {
@@ -182,7 +174,7 @@ class TimerManager : ViewModel() {
      * 安排下一次闹钟
      * 使用策略模式和单一数据源原则重构
      */
-    fun scheduleNextAlarm() {
+    private fun scheduleNextAlarm() {
         timerInstances.stopAlarm()
         
         // 使用策略模式创建闹钟计时器
@@ -216,7 +208,7 @@ class TimerManager : ViewModel() {
      * 开始眼睛休息计时器
      * 使用策略模式和单一数据源原则重构
      */
-    fun startEyeRestTimer() {
+    private fun startEyeRestTimer() {
         // 保存当前状态，以便在眼部休息结束后恢复
         eyeRestState = EyeRestState(
             previousTimerPhase = runtimeState.value.phase,
@@ -253,7 +245,7 @@ class TimerManager : ViewModel() {
         timerInstances.stopAll()
         
         // 重置状态
-        updateState { state ->
+        updateState {
             TimerRuntimeState() // 重置为默认状态
         }
     }
@@ -268,11 +260,4 @@ class TimerManager : ViewModel() {
         }
     }
 
-    /**
-     * 获取当前的计时器状态
-     * 使用策略模式和单一数据源原则重构
-     */
-    fun getCurrentState(): Companion.TimerPhase {
-        return runtimeState.value.phase
-    }
 }

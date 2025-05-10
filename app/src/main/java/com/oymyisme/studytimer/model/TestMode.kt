@@ -1,6 +1,5 @@
 package com.oymyisme.studytimer.model
 
-import com.oymyisme.model.TimerSettings
 import com.oymyisme.studytimer.BuildConfig
 
 /**
@@ -29,20 +28,7 @@ object TestMode {
     const val TEST_BREAK_TIME_MS = 10 * 1000L       // 10秒
     const val TEST_ALARM_INTERVAL_MS = 10 * 1000L   // 10秒
     const val TEST_EYE_REST_TIME_MS = 10 * 1000L    // 10秒
-    
-    // 便捷转换属性，将毫秒转换为分钟（浮点数）
-    val TEST_STUDY_DURATION_MIN: Float
-        get() = TEST_STUDY_TIME_MS / (60 * 1000f)
-    
-    val TEST_BREAK_DURATION_MIN: Float
-        get() = TEST_BREAK_TIME_MS / (60 * 1000f)
-    
-    val TEST_MIN_ALARM_INTERVAL_MIN: Float
-        get() = TEST_ALARM_INTERVAL_MS / (60 * 1000f)
-    
-    val TEST_MAX_ALARM_INTERVAL_MIN: Float
-        get() = TEST_ALARM_INTERVAL_MS / (60 * 1000f)
-    
+
     /**
      * 创建测试模式的 TimerSettings 实例
      * 封装所有测试模式相关的设置
@@ -58,7 +44,7 @@ object TestMode {
             alarmSoundType = SoundOptions.DEFAULT_ALARM_SOUND_TYPE,
             eyeRestSoundType = SoundOptions.DEFAULT_EYE_REST_SOUND_TYPE,
             testModeEnabled = true,
-            timeUnit = com.oymyisme.model.TimeUnit.SECONDS // 指定使用秒作为时间单位
+            timeUnit = TimeUnit.SECONDS // 指定使用秒作为时间单位
         )
     }
 }

@@ -1,7 +1,5 @@
 package com.oymyisme.studytimer.model
 
-import com.oymyisme.model.TimerSettings
-
 /**
  * 计时器时长数据类
  * 封装所有与计时器时长计算相关的参数

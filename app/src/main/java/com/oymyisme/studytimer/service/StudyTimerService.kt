@@ -6,8 +6,8 @@ import android.os.Binder
 import android.os.IBinder
 import android.os.PowerManager
 import android.util.Log
-import com.oymyisme.model.TimeUnit
-import com.oymyisme.model.TimerSettings
+import com.oymyisme.studytimer.model.TimeUnit
+import com.oymyisme.studytimer.model.TimerSettings
 import com.oymyisme.studytimer.BuildConfig
 import com.oymyisme.studytimer.model.SoundOptions
 import com.oymyisme.studytimer.media.AudioPlayerManager
@@ -29,7 +29,6 @@ class StudyTimerService : Service() {
 
         // Default timer constants
         private const val DEFAULT_STUDY_TIME_MIN = 90 // 90 minutes
-        private const val DEFAULT_BREAK_TIME_MIN = 20 // Default break if not passed
         const val DEFAULT_MIN_ALARM_INTERVAL_MIN = 3
         const val DEFAULT_MAX_ALARM_INTERVAL_MIN = 5
 
@@ -60,22 +59,9 @@ class StudyTimerService : Service() {
     // 暴露状态流给 UI
     val runtimeState: StateFlow<TimerRuntimeState>
         get() = timerManager.runtimeState
-        
-    // 便捷方法，方便其他组件使用
-    val timerPhase: TimerManager.Companion.TimerPhase
-        get() = runtimeState.value.phase
-        
+
     val timeLeftInSession: Long
         get() = runtimeState.value.timeLeftInSession
-        
-    val timeUntilNextAlarm: Long
-        get() = runtimeState.value.timeUntilNextAlarm
-        
-    val elapsedTimeInFullCycleMillis: Long
-        get() = runtimeState.value.elapsedTimeInFullCycle
-        
-    val cycleCompleted: Boolean
-        get() = runtimeState.value.cycleCompleted
 
     // Wake lock to keep CPU running
     private var wakeLock: PowerManager.WakeLock? = null
@@ -115,7 +101,7 @@ class StudyTimerService : Service() {
 
             override fun onAlarmTriggered() {
                 // 使用 TimerSettings 数据类的属性，提高代码内聚性
-                audioManager.playEyeRestSound(timerSettings.eyeRestSoundType)
+                audioManager.playEyeRestSound()
                 vibrationManager.vibrateForAlarm()
                 updateNotification()
             }
@@ -130,21 +116,21 @@ class StudyTimerService : Service() {
 
             override fun onEyeRestFinished() {
                 // 使用 TimerSettings 数据类的属性，提高代码内聚性
-                audioManager.playEyeRestCompleteSound(timerSettings.eyeRestSoundType)
+                audioManager.playEyeRestCompleteSound()
                 vibrationManager.vibrateShort()
                 updateNotification()
             }
 
             override fun onStudySessionFinished() {
                 // 使用 TimerSettings 数据类的属性，提高代码内聚性
-                audioManager.playAlarmSound(timerSettings.alarmSoundType)
+                audioManager.playAlarmSound()
                 vibrationManager.vibrateForAlarm()
                 updateNotification()
             }
 
             override fun onBreakFinished() {
                 // 使用 TimerSettings 数据类的属性，提高代码内聚性
-                audioManager.playAlarmSound(timerSettings.alarmSoundType)
+                audioManager.playAlarmSound()
                 vibrationManager.vibrateForAlarm()
                 updateNotification()
             }
@@ -173,31 +159,39 @@ class StudyTimerService : Service() {
         intent?.let {
             when (it.action) {
                 ACTION_START -> {
-                    // 使用 TimerSettings 数据类初始化设置，提高代码内聚性
-                    val studyDurationMin = it.getIntExtra(EXTRA_STUDY_DURATION_MIN, DEFAULT_STUDY_TIME_MIN)
-                    val breakDurationMin = it.getIntExtra(EXTRA_BREAK_DURATION_MIN, DEFAULT_BREAK_TIME_MIN)
-                    val minAlarmIntervalMin = it.getIntExtra(EXTRA_MIN_ALARM_INTERVAL_MIN, DEFAULT_MIN_ALARM_INTERVAL_MIN)
-                    val maxAlarmIntervalMin = it.getIntExtra(EXTRA_MAX_ALARM_INTERVAL_MIN, DEFAULT_MAX_ALARM_INTERVAL_MIN)
-                    val showNextAlarmTime = it.getBooleanExtra(EXTRA_SHOW_NEXT_ALARM_TIME, false)
-                    val alarmSoundType = it.getStringExtra(EXTRA_ALARM_SOUND_TYPE) ?: SoundOptions.DEFAULT_ALARM_SOUND_TYPE
-                    val eyeRestSoundType = it.getStringExtra(EXTRA_EYE_REST_SOUND_TYPE) ?: SoundOptions.DEFAULT_EYE_REST_SOUND_TYPE
-                    val testModeEnabled = if (it.hasExtra(EXTRA_TEST_MODE)) {
-                        it.getBooleanExtra(EXTRA_TEST_MODE, BuildConfig.DEBUG)
-                    } else {
-                        BuildConfig.DEBUG
-                    }
+
 
                     // 创建 TimerSettings 对象
                     timerSettings = TimerSettings(
-                        studyDurationMin = studyDurationMin,
+                        studyDurationMin = it.getIntExtra(
+                            EXTRA_STUDY_DURATION_MIN,
+                            DEFAULT_STUDY_TIME_MIN
+                        ),
                         // breakDurationMin 在 TimerSettings 中是计算属性
-                        minAlarmIntervalMin = minAlarmIntervalMin,
-                        maxAlarmIntervalMin = maxAlarmIntervalMin,
-                        showNextAlarmTime = showNextAlarmTime,
-                        alarmSoundType = alarmSoundType,
-                        eyeRestSoundType = eyeRestSoundType,
-                        testModeEnabled = testModeEnabled,
-                        timeUnit = if (testModeEnabled) TimeUnit.SECONDS else TimeUnit.MINUTES
+                        minAlarmIntervalMin = it.getIntExtra(
+                            EXTRA_MIN_ALARM_INTERVAL_MIN,
+                            DEFAULT_MIN_ALARM_INTERVAL_MIN
+                        ),
+                        maxAlarmIntervalMin = it.getIntExtra(
+                            EXTRA_MAX_ALARM_INTERVAL_MIN,
+                            DEFAULT_MAX_ALARM_INTERVAL_MIN
+                        ),
+                        showNextAlarmTime = it.getBooleanExtra(EXTRA_SHOW_NEXT_ALARM_TIME, false),
+                        alarmSoundType = it.getStringExtra(EXTRA_ALARM_SOUND_TYPE)
+                            ?: SoundOptions.DEFAULT_ALARM_SOUND_TYPE,
+                        eyeRestSoundType = it.getStringExtra(EXTRA_EYE_REST_SOUND_TYPE)
+                            ?: SoundOptions.DEFAULT_EYE_REST_SOUND_TYPE,
+                        testModeEnabled = if (it.hasExtra(EXTRA_TEST_MODE)) {
+                            it.getBooleanExtra(EXTRA_TEST_MODE, BuildConfig.DEBUG)
+                        } else {
+                            BuildConfig.DEBUG
+                        },
+                        timeUnit = if (if (it.hasExtra(EXTRA_TEST_MODE)) {
+                                it.getBooleanExtra(EXTRA_TEST_MODE, BuildConfig.DEBUG)
+                            } else {
+                                BuildConfig.DEBUG
+                            }
+                        ) TimeUnit.SECONDS else TimeUnit.MINUTES
                     )
 
                     if (BuildConfig.DEBUG) {
@@ -278,30 +272,6 @@ class StudyTimerService : Service() {
         val currentState = state.phase
         val timeLeftInSession = state.timeLeftInSession
         val timeUntilNextAlarm = state.timeUntilNextAlarm
-        val elapsedTimeInFullCycle = state.elapsedTimeInFullCycle
-        val cycleCompleted = state.cycleCompleted
-
-        val timerPhase = when (currentState) {
-            TimerManager.Companion.TimerPhase.IDLE -> com.oymyisme.model.TimerState.idle(
-                timeLeftInSession = timeLeftInSession,
-                elapsedTimeInFullCycle = elapsedTimeInFullCycle,
-                cycleCompleted = cycleCompleted
-            )
-            TimerManager.Companion.TimerPhase.STUDYING -> com.oymyisme.model.TimerState.studying(
-                timeLeftInSession = timeLeftInSession,
-                timeUntilNextAlarm = timeUntilNextAlarm,
-                elapsedTimeInFullCycle = elapsedTimeInFullCycle
-            )
-            TimerManager.Companion.TimerPhase.BREAK -> com.oymyisme.model.TimerState.breakState(
-                timeLeftInSession = timeLeftInSession,
-                elapsedTimeInFullCycle = elapsedTimeInFullCycle
-            )
-            TimerManager.Companion.TimerPhase.EYE_REST -> com.oymyisme.model.TimerState.eyeRest(
-                timeLeftInSession = timeLeftInSession,
-                elapsedTimeInFullCycle = elapsedTimeInFullCycle
-            )
-            else -> com.oymyisme.model.TimerState.idle() // 默认情况
-        }
 
         // 使用数据类更新通知
         notificationManager.updateNotification(
@@ -345,7 +315,7 @@ class StudyTimerService : Service() {
             timerSettings = timerSettings.copy(
                 studyDurationMin = studyDurationMinutes,
                 testModeEnabled = enabled,
-                timeUnit = if (enabled) com.oymyisme.model.TimeUnit.SECONDS else com.oymyisme.model.TimeUnit.MINUTES
+                timeUnit = if (enabled) TimeUnit.SECONDS else TimeUnit.MINUTES
             )
         }
 

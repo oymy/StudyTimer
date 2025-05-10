@@ -29,6 +29,7 @@ import androidx.compose.ui.res.stringResource
 import com.oymyisme.studytimer.R
 import com.oymyisme.studytimer.model.SoundOption
 import com.oymyisme.studytimer.model.SoundOptions
+import com.oymyisme.studytimer.model.TimerSettings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlin.math.roundToInt
@@ -45,11 +46,10 @@ private fun calculateBreakDuration(studyDuration: Int): Int {
 }
 
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    timerSettings: StateFlow<com.oymyisme.model.TimerSettings>,
-    onSettingsChange: (com.oymyisme.model.TimerSettings) -> Unit,
+    timerSettings: StateFlow<TimerSettings>,
+    onSettingsChange: (TimerSettings) -> Unit,
     onNavigateBack: () -> Unit,
     onNavigateToThemeSettings: () -> Unit
 ) {
@@ -193,8 +193,8 @@ private fun ThemeSettingsOption(
 
 @Composable
 fun TimerSettingsCard(
-    settings: com.oymyisme.model.TimerSettings,
-    onSettingsChange: (com.oymyisme.model.TimerSettings) -> Unit
+    settings: TimerSettings,
+    onSettingsChange: (TimerSettings) -> Unit
 ) {
     // 获取提示音选项
     val soundOptions = SoundOptions.getSoundOptions(LocalContext.current)
@@ -320,20 +320,6 @@ fun TestModeSwitch(
 }
 
 /**
- * 设置部分标题
- */
-@Composable
-private fun SectionTitle(title: String) {
-    Text(
-        text = title,
-        fontSize = 18.sp,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(bottom = 12.dp)
-    )
-}
-
-/**
  * 分隔线
  */
 @Composable
@@ -353,9 +339,9 @@ private fun StudyDurationSection(
     onStudyDurationChange: (Int) -> Unit
 ) {
     val studyDurationOptions = listOf(30, 45, 60, 75, 90, 105, 120)
-    val formattedOptions = studyDurationOptions.associate { duration ->
+    val formattedOptions = studyDurationOptions.associateWith { duration ->
         val breakDuration = calculateBreakDuration(duration)
-        duration to "study $duration min + break $breakDuration min"
+        "study $duration min + break $breakDuration min"
     }
     
     SettingItem(
@@ -621,26 +607,13 @@ private fun SettingItemLayout(
     }
 }
 
-/**
- * 格式化学习时长和休息时长
- * @param studyDuration 学习时长（分钟）
- * @return 格式化后的字符串，包含学习时长和休息时长
- */
-@Composable
-private fun formatStudyDurationWithBreak(studyDuration: Int): String {
-    // 使用与 MainActivity 相同的计算方法
-    val breakDuration = calculateBreakDuration(studyDuration)
-    return stringResource(R.string.study_duration_format, studyDuration, breakDuration)
-}
-
-
 
 @Preview(showBackground = true)
 @Composable
 fun SettingsScreenPreview() {
     StudyTimerTheme {
         // 创建一个默认的TimerSettings实例用于预览
-        val defaultSettings = com.oymyisme.model.TimerSettings(
+        val defaultSettings = TimerSettings(
             studyDurationMin = 90,
             minAlarmIntervalMin = 3,
             maxAlarmIntervalMin = 5,

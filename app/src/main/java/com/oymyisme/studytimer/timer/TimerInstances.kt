@@ -12,8 +12,8 @@ class TimerInstances {
     var eyeRestTimer: CountDownTimer? = null
     
     // 眼睛休息前的计时器实例
-    var studyTimerBeforeEyeRest: CountDownTimer? = null
-    var alarmTimerBeforeEyeRest: CountDownTimer? = null
+    private var studyTimerBeforeEyeRest: CountDownTimer? = null
+    private var alarmTimerBeforeEyeRest: CountDownTimer? = null
     
     /**
      * 停止所有计时器
@@ -27,7 +27,7 @@ class TimerInstances {
     /**
      * 停止会话计时器
      */
-    fun stopSession() {
+    private fun stopSession() {
         sessionTimer?.cancel()
         sessionTimer = null
     }
@@ -43,7 +43,7 @@ class TimerInstances {
     /**
      * 停止眼睛休息计时器
      */
-    fun stopEyeRest() {
+    private fun stopEyeRest() {
         eyeRestTimer?.cancel()
         eyeRestTimer = null
     }
@@ -55,12 +55,5 @@ class TimerInstances {
         studyTimerBeforeEyeRest = sessionTimer
         alarmTimerBeforeEyeRest = alarmTimer
     }
-    
-    /**
-     * 清除眼睛休息前保存的计时器实例
-     */
-    fun clearTimersBeforeEyeRest() {
-        studyTimerBeforeEyeRest = null
-        alarmTimerBeforeEyeRest = null
-    }
+
 }
