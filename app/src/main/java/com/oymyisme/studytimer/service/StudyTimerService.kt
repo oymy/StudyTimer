@@ -202,13 +202,8 @@ class StudyTimerService : Service() {
                         )
                     }
 
-                    // 配置 TimerManager，使用 TimerSettings 对象的属性
-                    timerManager.configure(
-                        timerSettings.studyDurationMin,
-                        timerSettings.breakDurationMin,
-                        timerSettings.minAlarmIntervalMin,
-                        timerSettings.maxAlarmIntervalMin,
-                        timerSettings.testModeEnabled
+                    // 配置 TimerManager，直接传递 TimerSettings 对象
+                    timerManager.configure(timerSettings
                     )
 
                     // 创建初始通知，使用 TimerSettings 对象的属性
@@ -348,25 +343,13 @@ class StudyTimerService : Service() {
             )
         }
 
-        // 更新 TimerManager 的配置，使用 TimerSettings 对象的属性
-        timerManager.configure(
-            timerSettings.studyDurationMin,
-            timerSettings.breakDurationMin,
-            timerSettings.minAlarmIntervalMin,
-            timerSettings.maxAlarmIntervalMin,
-            timerSettings.testModeEnabled
-        )
+        // 更新 TimerManager 的配置，直接传递 TimerSettings 对象
+        timerManager.configure(timerSettings)
 
         // 如果当前是空闲状态，更新显示的时间
         if (timerManager.timerState.value == TimerManager.Companion.TimerState.IDLE) {
             // 直接重新启动计时器，这将更新剩余时间
-            timerManager.configure(
-                timerSettings.studyDurationMin,
-                timerSettings.breakDurationMin,
-                timerSettings.minAlarmIntervalMin,
-                timerSettings.maxAlarmIntervalMin,
-                timerSettings.testModeEnabled
-            )
+            timerManager.configure(timerSettings)
         }
 
         if (BuildConfig.DEBUG) {

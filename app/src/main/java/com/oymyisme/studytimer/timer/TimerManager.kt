@@ -119,29 +119,7 @@ class TimerManager {
         updateInternalDurations()
     }
     
-    /**
-     * 向后兼容的配置方法
-     */
-    fun configure(
-        studyDurationMin: Int,
-        breakDurationMin: Int,
-        minAlarmIntervalMin: Int,
-        maxAlarmIntervalMin: Int,
-        testMode: Boolean
-    ) {
-        // 创建 TimerSettings 对象
-        val timeUnit = if (testMode) com.oymyisme.model.TimeUnit.SECONDS else com.oymyisme.model.TimeUnit.MINUTES
-        val settings = TimerSettings(
-            studyDurationMin = studyDurationMin,
-            minAlarmIntervalMin = minAlarmIntervalMin,
-            maxAlarmIntervalMin = maxAlarmIntervalMin,
-            testModeEnabled = testMode,
-            timeUnit = timeUnit
-        )
-        
-        // 调用新的 configure 方法
-        configure(settings)
-    }
+
 
     /**
      * 更新内部计算用的时间值
