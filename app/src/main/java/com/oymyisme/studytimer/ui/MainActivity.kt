@@ -12,6 +12,7 @@ import android.os.IBinder
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -167,6 +168,37 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        
+        // 添加后退按钮处理，防止用户在周期未结束时意外退出应用
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                when {
+                    _showSettings.value -> {
+                        // 如果在设置界面，返回主界面
+                        _showSettings.value = false
+                    }
+                    _showThemeSettings.value -> {
+                        // 如果在主题设置界面，返回设置界面
+                        _showThemeSettings.value = false
+                    }
+                    _timerState.value.timerPhase != TimerPhase.IDLE -> {
+                        // 如果计时器正在运行，显示提示并最小化应用而不是退出
+                        Toast.makeText(
+                            this@MainActivity,
+                            "计时器正在运行中，已切换到后台。如需停止，请先点击停止按钮。",
+                            Toast.LENGTH_LONG
+                        ).show()
+                        // 将应用移至后台而不是退出
+                        moveTaskToBack(true)
+                    }
+                    else -> {
+                        // 如果计时器空闲，允许正常退出
+                        isEnabled = false
+                        onBackPressedDispatcher.onBackPressed()
+                    }
+                }
+            }
+        })
 
         // 初始化主题设置管理器
         themeSettings = ThemeSettings(this)
@@ -414,7 +446,8 @@ class MainActivity : ComponentActivity() {
         // 保存设置，以防设置已更改但未通过设置界面保存
         saveSettings()
         
-        // 解绑服务
+        // 解绑服务，但不停止服务
+        // 这样即使应用在后台，计时器仍然会继续运行
         if (bound) {
             unbindService(connection)
             bound = false

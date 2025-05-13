@@ -2,7 +2,9 @@ package com.oymyisme.studytimer.service
 
 import android.app.Service
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.Binder
+import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
 import android.util.Log
@@ -214,8 +216,12 @@ class StudyTimerService : Service() {
                         0L
                     )
 
-                    // 启动前台服务
-                    startForeground(NOTIFICATION_ID, initialNotification)
+                    // 启动前台服务，使用FOREGROUND_SERVICE_IMMEDIATE标志确保立即显示通知
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        startForeground(NOTIFICATION_ID, initialNotification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK or ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+                    } else {
+                        startForeground(NOTIFICATION_ID, initialNotification)
+                    }
 
                     if (BuildConfig.DEBUG) {
                         Log.d(

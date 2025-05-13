@@ -51,13 +51,15 @@ class NotificationHelper private constructor(private val context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val name = context.getString(R.string.notification_channel_name)
             val description = context.getString(R.string.notification_channel_description)
-            val importance = NotificationManager.IMPORTANCE_LOW // 使用低重要性避免声音干扰
+            val importance = NotificationManager.IMPORTANCE_HIGH // 使用高重要性确保在锁屏上显示
             
             val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
                 this.description = description
-                enableLights(false)
+                enableLights(true) // 启用指示灯
                 enableVibration(false)
                 setSound(null, null) // 禁用通知声音
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC // 在锁屏上完全显示通知
+                setShowBadge(true) // 显示通知徽章
             }
             
             systemNotificationManager.createNotificationChannel(channel)
@@ -102,9 +104,11 @@ class NotificationHelper private constructor(private val context: Context) {
                 setContentIntent(pendingIntent)
                 setOnlyAlertOnce(true)
                 setSound(null) // 禁用通知声音
-                setPriority(NotificationCompat.PRIORITY_LOW) // 使用低优先级
-                setCategory(NotificationCompat.CATEGORY_SERVICE)
-                setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                setPriority(NotificationCompat.PRIORITY_MAX) // 使用最高优先级
+                setCategory(NotificationCompat.CATEGORY_ALARM) // 使用闹钟类别
+                setVisibility(NotificationCompat.VISIBILITY_PUBLIC) // 在锁屏上完全显示通知
+                // 添加全屏意图，确保在锁屏状态下显示
+                setFullScreenIntent(pendingIntent, true)
             }
         }
         

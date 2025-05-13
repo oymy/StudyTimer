@@ -7,6 +7,8 @@ import android.media.AudioManager
 import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import com.oymyisme.studytimer.BuildConfig
 
@@ -40,6 +42,20 @@ class AudioPlayerManager private constructor(private val context: Context) {
 
     // 系统音频管理器
     private val systemAudioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    
+    // 音频播放最大时长（毫秒）
+    private val MAX_SOUND_DURATION_MS = 5000L
+    
+    // 用于定时停止音频播放的Handler
+    private val handler = Handler(Looper.getMainLooper())
+    
+    // 停止音频播放的Runnable
+    private val stopSoundRunnable = Runnable {
+        if (BuildConfig.DEBUG) {
+            Log.d(TAG, "Auto-stopping sound after ${MAX_SOUND_DURATION_MS}ms")
+        }
+        stopSound()
+    }
 
     // 音频焦点变化监听器
     private val afChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
@@ -111,6 +127,11 @@ class AudioPlayerManager private constructor(private val context: Context) {
 
                 // 开始播放
                 start()
+                
+                // 设置定时器，确保音频播放不超过5秒
+                if (!loop) { // 只对非循环播放设置定时器
+                    scheduleAutoStop()
+                }
             }
 
             if (BuildConfig.DEBUG) {
@@ -127,6 +148,9 @@ class AudioPlayerManager private constructor(private val context: Context) {
      * 停止声音播放
      */
     private fun stopSound() {
+        // 移除定时器
+        handler.removeCallbacks(stopSoundRunnable)
+        
         mediaPlayer?.apply {
             if (isPlaying) {
                 stop()
@@ -139,6 +163,9 @@ class AudioPlayerManager private constructor(private val context: Context) {
      * 暂停声音播放
      */
     private fun pauseSound() {
+        // 移除定时器
+        handler.removeCallbacks(stopSoundRunnable)
+        
         mediaPlayer?.apply {
             if (isPlaying) {
                 pause()
@@ -153,6 +180,11 @@ class AudioPlayerManager private constructor(private val context: Context) {
         mediaPlayer?.apply {
             if (!isPlaying) {
                 start()
+                
+                // 重新设置定时器
+                if (!isLooping) { // 只对非循环播放设置定时器
+                    scheduleAutoStop()
+                }
             }
         }
     }
@@ -161,6 +193,9 @@ class AudioPlayerManager private constructor(private val context: Context) {
      * 释放 MediaPlayer 资源
      */
     fun releaseMediaPlayer() {
+        // 移除定时器
+        handler.removeCallbacks(stopSoundRunnable)
+        
         mediaPlayer?.apply {
             if (isPlaying) {
                 stop()
@@ -305,5 +340,20 @@ class AudioPlayerManager private constructor(private val context: Context) {
         // 这里可以根据soundTypeId获取对应的声音URI
         // 目前简单返回null，使用默认声音
         return null
+    }
+    
+    /**
+     * 设置定时器自动停止音频播放
+     */
+    private fun scheduleAutoStop() {
+        // 先移除之前的定时器，避免重复
+        handler.removeCallbacks(stopSoundRunnable)
+        
+        // 设置新的定时器
+        handler.postDelayed(stopSoundRunnable, MAX_SOUND_DURATION_MS)
+        
+        if (BuildConfig.DEBUG) {
+            Log.d(TAG, "Scheduled auto-stop after ${MAX_SOUND_DURATION_MS}ms")
+        }
     }
 }
