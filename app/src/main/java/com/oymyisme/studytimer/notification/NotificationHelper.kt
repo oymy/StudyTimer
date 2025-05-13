@@ -9,6 +9,7 @@ import android.content.Intent
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import com.oymyisme.studytimer.receiver.StopTimerReceiver
 import com.oymyisme.studytimer.BuildConfig
 import com.oymyisme.studytimer.R
 import com.oymyisme.studytimer.model.TimerPhase
@@ -112,6 +113,18 @@ class NotificationHelper private constructor(private val context: Context) {
             }
         }
         
+        // 创建停止按钮的PendingIntent
+        val stopIntent = Intent(context, StopTimerReceiver::class.java).apply {
+            action = StopTimerReceiver.ACTION_STOP_TIMER
+        }
+        
+        val stopPendingIntent = PendingIntent.getBroadcast(
+            context,
+            0,
+            stopIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        
         // 更新通知内容
         val title = context.getString(R.string.notification_title)
         val contentText = getNotificationContentText(timerPhase, timeLeftInSession, showNextAlarmTime, timeUntilNextAlarm)
@@ -119,6 +132,20 @@ class NotificationHelper private constructor(private val context: Context) {
         notificationBuilder?.apply {
             setContentTitle(title)
             setContentText(contentText)
+            
+            // 清除之前的所有按钮
+            clearActions()
+            
+            // 只在非空闲状态下显示停止按钮
+            if (timerPhase != TimerPhase.IDLE) {
+                addAction(
+                    NotificationCompat.Action.Builder(
+                        android.R.drawable.ic_media_pause,
+                        context.getString(R.string.notification_action_stop),
+                        stopPendingIntent
+                    ).build()
+                )
+            }
         }
         
         return notificationBuilder?.build() ?: throw IllegalStateException("Notification builder is null")

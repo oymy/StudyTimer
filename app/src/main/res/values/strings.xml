@@ -72,4 +72,5 @@
     <string name="notification_eye_rest_ongoing">Eye rest: %1$s</string>
     <string name="notification_rest_eyes">Rest your eyes for 10 seconds</string>
     <string name="notification_break_time">Break time! Relax for %1$d minutes.</string>
+    <string name="notification_action_stop">Stop</string>
 </resources>

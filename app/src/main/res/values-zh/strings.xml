@@ -73,4 +73,5 @@
     <string name="notification_eye_rest_ongoing">眼睛休息：%1$s</string>
     <string name="notification_rest_eyes">休息眼睛 10 秒钟</string>
     <string name="notification_break_time">休息时间！放松 %1$d 分钟。</string>
+    <string name="notification_action_stop">停止</string>
 </resources>
