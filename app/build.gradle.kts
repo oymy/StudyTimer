@@ -65,6 +65,10 @@ dependencies {
     // 扩展图标
     implementation("androidx.compose.material:material-icons-extended:1.6.1")
     
+    // 生命周期监听依赖，用于应用进程生命周期管理
+    implementation("androidx.lifecycle:lifecycle-process:2.7.0")
+    implementation(libs.androidx.lifecycle.process)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
